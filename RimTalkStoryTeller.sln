@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.14.36327.8
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LivingStoryTeller", "RimTalkStoryTeller\LivingStoryTeller.csproj", "{9C5FFF5B-46C7-4B03-858A-46CD141F8FDB}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{9C5FFF5B-46C7-4B03-858A-46CD141F8FDB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9C5FFF5B-46C7-4B03-858A-46CD141F8FDB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9C5FFF5B-46C7-4B03-858A-46CD141F8FDB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9C5FFF5B-46C7-4B03-858A-46CD141F8FDB}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {6191C3C9-5783-4ABA-9B9E-771CDA0737D8}
+	EndGlobalSection
+EndGlobal
