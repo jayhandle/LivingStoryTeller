@@ -26,6 +26,10 @@ namespace LivingStoryteller
             Listing_Standard listing = new Listing_Standard();
             listing.Begin(inRect);
 
+            listing.Label("Enable Debug Logging");
+            listing.CheckboxLabeled( "Enable Debug Logging",ref Settings.DebugLogging);
+            listing.Gap();
+
             // Provider toggle
             string providerLabel = Settings.provider == 0
                 ? "OpenAI" : "Google AI Studio";
@@ -67,7 +71,7 @@ namespace LivingStoryteller
     {
         static LivingStorytellerStartup()
         {
-            var harmony = new Harmony("Jessie.LivingStoryteller");
+            var harmony = new Harmony("JayHandle.LivingStoryteller");
 
             try
             {

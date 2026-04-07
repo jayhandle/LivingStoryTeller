@@ -31,4 +31,10 @@
     </Reference>
   </ItemGroup>
 
+  <ItemGroup>
+    <None Update="StorytellerPersona\StorytellerPersona.xml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
 </Project>

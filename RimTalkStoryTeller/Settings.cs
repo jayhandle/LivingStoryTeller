@@ -9,6 +9,7 @@ namespace LivingStoryteller
         public string modelName = "";
         public float displayDuration = 15f;
         public float cooldownSeconds = 60f;
+        public bool DebugLogging = false;
 
         public string GetEndpoint()
         {
@@ -36,6 +37,7 @@ namespace LivingStoryteller
                 "displayDuration", 15f);
             Scribe_Values.Look(ref cooldownSeconds,
                 "cooldownSeconds", 60f);
+            Scribe_Values.Look(ref DebugLogging, "DebugLogging", false);
             base.ExposeData();
         }
     }

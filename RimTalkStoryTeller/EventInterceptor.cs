@@ -25,34 +25,7 @@ namespace LivingStoryteller
             }
             eventName = FormatEventName(eventName);
 
-            string persona;
-            if (defName == "Cassandra")
-            {
-                persona =
-                    "You are Cassandra Classic. Calculating, methodical, " +
-                    "dramatic. You planned this event deliberately. " +
-                    "Address the player directly.";
-            }
-            else if (defName == "Randy")
-            {
-                persona =
-                    "You are Randy Random. Chaotic, gleeful, amused by " +
-                    "everything. You rolled the dice and this is " +
-                    "what came up.";
-            }
-            else if (defName == "Phoebe")
-            {
-                persona =
-                    "You are Phoebe Chillax. Gentle, apologetic, but " +
-                    "ominous underneath. You tried to hold this back " +
-                    "but couldn't.";
-            }
-            else
-            {
-                persona =
-                    "You are the storyteller guiding this colony. " +
-                    "Comment on what just happened.";
-            }
+            string persona = StorytellerPersonaDatabase.GetPersonaFor(defName);
 
             persona += " Keep the narration concise, ideally under 100 words. " +
                 "Use a tone that fits the event. If it's a minor event, " +
