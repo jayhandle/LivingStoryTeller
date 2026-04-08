@@ -15,14 +15,22 @@ namespace LivingStoryteller
                 .FirstOrDefault(d => d.storytellerDefName == "Fallback");
         }
 
-        public static string GetPersonaFor(string storytellerDefName)
+        public static StorytellerPersonaDef GetPersonaDef(string storytellerDefName)
         {
-            LogManager.Log($"Retrieving persona for storyteller: {storytellerDefName}");
-            var match = DefDatabase<StorytellerPersonaDef>
+            return DefDatabase<StorytellerPersonaDef>
                 .AllDefs
-                .FirstOrDefault(d => d.storytellerDefName == storytellerDefName);
+                .FirstOrDefault(d => d.storytellerDefName == storytellerDefName)
+                ?? fallback;
+        }
 
-            return match?.personaText ?? fallback?.personaText ?? "";
+        public static string GetPersonaText(string storytellerDefName)
+        {
+            return GetPersonaDef(storytellerDefName)?.personaText ?? "";
+        }
+
+        public static string GetVoiceId(string storytellerDefName)
+        {
+            return GetPersonaDef(storytellerDefName)?.voiceId ?? "default_voice";
         }
     }
 }

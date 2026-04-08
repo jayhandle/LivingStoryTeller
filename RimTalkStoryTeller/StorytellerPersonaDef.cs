@@ -5,6 +5,7 @@ namespace LivingStoryteller
     public class StorytellerPersonaDef : Def
     {
         public string storytellerDefName;   // e.g. "Cassandra"
-        public string personaText;          // The persona prompt
+        public string personaText;          // Persona prompt
+        public string voiceId;              // TTS voice identifier
     }
 }

@@ -99,6 +99,9 @@ namespace LivingStoryteller
                     }
                 }
             }
+
+            // After showing narration window
+            TTSService.ProcessPendingAudio();
         }
 
         private static void QueueLog(
@@ -116,7 +119,8 @@ namespace LivingStoryteller
             string incidentCategory,
             string persona,
             string colonyContext,
-            string storytellerName)
+            string storytellerName,
+            string voiceId)
         {
             var settings = ModOptions.Settings;
 
@@ -184,6 +188,9 @@ namespace LivingStoryteller
                             pendingPortrait = portrait;
                             hasPending = true;
                         }
+
+                        //Trigger TTS
+                        TTSService.RequestSpeech(response, voiceId);
                     }
                     else
                     {

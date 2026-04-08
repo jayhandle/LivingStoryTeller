@@ -25,7 +25,9 @@ namespace LivingStoryteller
             }
             eventName = FormatEventName(eventName);
 
-            string persona = StorytellerPersonaDatabase.GetPersonaFor(defName);
+            var personaDef = StorytellerPersonaDatabase.GetPersonaDef(defName);
+            string persona = personaDef.personaText;
+            string voiceId = personaDef.voiceId;
 
             persona += " Keep the narration concise, ideally under 100 words. " +
                 "Use a tone that fits the event. If it's a minor event, " +
@@ -50,7 +52,8 @@ namespace LivingStoryteller
                 incident.category.ToString(),
                 persona,
                 colonyContext,
-                storyteller?.label ?? "Storyteller"
+                storyteller?.label ?? "Storyteller",
+                voiceId
             );
 
             Log.Message(
