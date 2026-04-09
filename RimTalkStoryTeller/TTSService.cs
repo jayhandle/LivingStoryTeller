@@ -17,18 +17,25 @@ namespace LivingStoryteller
         private static readonly HttpClient httpClient = new HttpClient();
 
         // Called every frame from StorytellerAIService.ProcessPending()
-        public static void ProcessPendingAudio()
+        public static async Task ProcessPendingAudio()
         {
             byte[] pcm = null;
 
-            lock (audioLock)
-            {
-                if (!hasPendingClip) return;
+            //lock (audioLock)
+            //{
+           
+                while (!hasPendingClip)
+                {
+                    // Wait until main thread has processed the pending clip
+                    await Task.Delay(500);
+                }
+            
+                LogManager.Log("[LivingStoryteller][TTS] Has Pending Clip.");
 
                 pcm = pendingPcm;
                 pendingPcm = null;
                 hasPendingClip = false;
-            }
+            //}
 
             if (pcm != null)
             {
@@ -68,11 +75,11 @@ namespace LivingStoryteller
                     if (pcm != null && pcm.Length > 0)
                     {
                         LogManager.Log("[LivingStoryteller][TTS] Received PCM data length = " + pcm.Length);    
-                        lock (audioLock)
-                        {
+                        //lock (audioLock)
+                        //{
                             pendingPcm = pcm;
                             hasPendingClip = true;
-                        }
+                        //}
                     }
                     else
                     {

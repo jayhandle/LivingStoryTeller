@@ -101,6 +101,7 @@ namespace LivingStoryteller
             }
 
             // After showing narration window
+            LogManager.Log("Processing pending audio for narration.");
             TTSService.ProcessPendingAudio();
         }
 
