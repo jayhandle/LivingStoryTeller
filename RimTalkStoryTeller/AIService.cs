@@ -14,9 +14,11 @@ namespace LivingStoryteller
     {
         private static bool isWaiting = false;
         private static float lastNarrationTime = -999f;
-
+        private static List<string> eventProcessing = new List<string>();
         // Thread-safe narration queue
         private static readonly object pendingLock = new object();
+        private static readonly object eventProcessingLock = new object();
+
         private static string pendingName;
         private static string pendingText;
         private static Texture2D pendingPortrait;
@@ -44,15 +46,19 @@ namespace LivingStoryteller
                     else if (level == "warning")
                         Log.Warning(msg);
                     else
-                        Log.Message(msg);
+                        LogManager.Log(msg);
                 }
             }
 
+            if(TTSService.ProcessingAudio)
+            {
+                return;
+            }
             // Process pending narration
             lock (pendingLock)
             {
                 if (!hasPending) return;
-
+                LogManager.Log("Pending narration found.");
                 // If RPG Dialog is active, wait for any existing
                 // event dialog to close before showing ours
                 if (RPGDialogBridge.IsAvailable)
@@ -78,6 +84,12 @@ namespace LivingStoryteller
 
                 if (text.NullOrEmpty()) return;
 
+                if(ModOptions.Settings.TTSEnabled)
+                {
+                    LogManager.Log("Processing pending audio for narration.");
+                    TTSService.ProcessPendingAudio();
+                }
+
                 if (RPGDialogBridge.IsAvailable)
                 {
                     RPGDialogBridge.ShowNarration(name, text);
@@ -99,10 +111,6 @@ namespace LivingStoryteller
                     }
                 }
             }
-
-            // After showing narration window
-            LogManager.Log("Processing pending audio for narration.");
-            TTSService.ProcessPendingAudio();
         }
 
         private static void QueueLog(
@@ -115,32 +123,42 @@ namespace LivingStoryteller
             }
         }
 
-        public static void RequestNarration(
-            string incidentLabel,
-            string incidentCategory,
-            string persona,
-            string colonyContext,
-            string storytellerName,
-            string voiceId)
+        public static void RequestNarration(string incidentLabel, string incidentCategory, string persona, string colonyContext, string storytellerName, string voiceId)
         {
+            var eventKey = incidentLabel + "|" + incidentCategory;
+            LogManager.Log("Requesting narration for event: " + incidentLabel + " (Category: " + incidentCategory + ") EventKey:" + eventKey);
+
+            lock (eventProcessingLock)
+            {
+                if (eventProcessing.Contains(eventKey))
+                {
+                    LogManager.Log(persona + " is already processing a narration for this event. Skipping duplicate request.");
+                    return;
+                }
+
+                eventProcessing.Add(eventKey);
+            }
+
             var settings = ModOptions.Settings;
 
             if (settings.apiKey.NullOrEmpty())
             {
-                Log.Warning(
-                    "[LivingStoryteller] No API key configured. " +
-                    "Go to Mod Settings > The Living Storyteller.");
+                Log.Warning( "[LivingStoryteller] No API key configured. " + "Go to Mod Settings > The Living Storyteller.");
+                eventProcessing.Remove(eventKey);
                 return;
             }
 
-            if (Time.time - lastNarrationTime <
-                settings.cooldownSeconds)
+            if (Time.time - lastNarrationTime < settings.cooldownSeconds)
             {
+                LogManager.Log("Cooldown active. Skipping narration for event: " + incidentLabel + " (Category: " + incidentCategory + ")");
+                eventProcessing.Remove(eventKey);
                 return;
             }
 
             if (isWaiting)
             {
+                LogManager.Log("Already waiting for a narration response. " + "Skipping new narration for event: " + incidentLabel + " (Category: " + incidentCategory + ")");
+                eventProcessing.Remove(eventKey);
                 return;
             }
 
@@ -170,46 +188,39 @@ namespace LivingStoryteller
 
             Task.Run(() =>
             {
-                try
+                var retryCount = 3;
+                for (int i = 0; i < retryCount; i++)
                 {
-                    string response = CallAPI(
-                        endpoint, apiKey, model,
-                        systemPrompt, userMessage);
-
-                    if (!response.NullOrEmpty())
+                    try
                     {
-                        QueueLog(
-                            "[LivingStoryteller] " +
-                            "Narration received.");
+                        string response = CallAPI( endpoint, apiKey, model, systemPrompt, userMessage);
 
-                        lock (pendingLock)
+                        if (!response.NullOrEmpty())
                         {
-                            pendingName = name;
-                            pendingText = response;
-                            pendingPortrait = portrait;
-                            hasPending = true;
+                            QueueLog("Narration received.");
+                            TTSService.RequestSpeech(response, voiceId);
+                            lock (pendingLock)
+                            {
+                                pendingName = name;
+                                pendingText = response;
+                                pendingPortrait = portrait;
+                                hasPending = true;
+                            }
+                            break;
                         }
-
-                        //Trigger TTS
-                        TTSService.RequestSpeech(response, voiceId);
+                        else
+                        {
+                            QueueLog("[LivingStoryteller] " + "Empty AI response.", "warning");
+                        }
                     }
-                    else
+                    catch (Exception ex)
                     {
-                        QueueLog(
-                            "[LivingStoryteller] " +
-                            "Empty AI response.", "warning");
+                        QueueLog( "[LivingStoryteller] AI call failed: " + ex.Message, "error");
                     }
                 }
-                catch (Exception ex)
-                {
-                    QueueLog(
-                        "[LivingStoryteller] AI call failed: "
-                        + ex.Message, "error");
-                }
-                finally
-                {
-                    isWaiting = false;
-                }
+
+                isWaiting = false;
+                eventProcessing.Remove(eventKey);
             });
         }
 
@@ -251,9 +262,7 @@ namespace LivingStoryteller
                 "\"max_tokens\":8192," +
                 "\"temperature\":0.9}";
 
-            QueueLog(
-                "[LivingStoryteller] Sending API request to " +
-                endpoint + " with model: " + json);
+            QueueLog("Sending API request to " + endpoint + " with model: " + json);
             try
             {
                 var request =
@@ -284,9 +293,7 @@ namespace LivingStoryteller
                     ? responseBody.Substring(0, 500) + "..."
                     : responseBody;
 
-                QueueLog(
-                    "[LivingStoryteller] Raw API response: "
-                    + responseBody);
+                QueueLog( "[LivingStoryteller] Raw API response: " + responseBody);
 
                 return ParseContent(responseBody);
             }
@@ -297,9 +304,7 @@ namespace LivingStoryteller
                 if (httpResp != null &&
                     (int)httpResp.StatusCode == 429)
                 {
-                    QueueLog(
-                        "[LivingStoryteller] Rate limited. " +
-                        "Skipping this narration.", "warning");
+                    QueueLog("[LivingStoryteller] Rate limited. " + "Skipping this narration.", "warning");
                     return null;
                 }
                 throw;

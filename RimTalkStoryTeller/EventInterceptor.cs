@@ -47,16 +47,9 @@ namespace LivingStoryteller
                     wealth.ToString("F0") + " wealth, day " + day + ".";
             }
 
-            StorytellerAIService.RequestNarration(
-                eventName,
-                incident.category.ToString(),
-                persona,
-                colonyContext,
-                storyteller?.label ?? "Storyteller",
-                voiceId
-            );
+            StorytellerAIService.RequestNarration( eventName, incident.category.ToString(), persona, colonyContext, storyteller?.label ?? "Storyteller", voiceId);
 
-            Log.Message(
+            LogManager.Log(
                 "[LivingStoryteller] Event intercepted: " + eventName);
         }
 

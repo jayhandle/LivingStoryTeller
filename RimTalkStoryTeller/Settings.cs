@@ -10,6 +10,7 @@ namespace LivingStoryteller
         public float displayDuration = 15f;
         public float cooldownSeconds = 60f;
         public bool DebugLogging = false;
+        public bool TTSEnabled = true;
 
         public string GetEndpoint()
         {
@@ -33,11 +34,11 @@ namespace LivingStoryteller
             Scribe_Values.Look(ref apiKey, "apiKey", "");
             Scribe_Values.Look(ref provider, "provider", 0);
             Scribe_Values.Look(ref modelName, "modelName", "");
-            Scribe_Values.Look(ref displayDuration,
-                "displayDuration", 15f);
-            Scribe_Values.Look(ref cooldownSeconds,
-                "cooldownSeconds", 60f);
+            Scribe_Values.Look(ref displayDuration, "displayDuration", 15f);
+            Scribe_Values.Look(ref cooldownSeconds, "cooldownSeconds", 60f);
             Scribe_Values.Look(ref DebugLogging, "DebugLogging", false);
+            Scribe_Values.Look(ref TTSEnabled, "TTSEnabled", true);
+
             base.ExposeData();
         }
     }

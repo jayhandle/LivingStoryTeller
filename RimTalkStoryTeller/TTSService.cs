@@ -15,6 +15,7 @@ namespace LivingStoryteller
         private static byte[] pendingPcm;
         private static bool hasPendingClip = false;
         private static readonly HttpClient httpClient = new HttpClient();
+        public static bool ProcessingAudio = false;
 
         // Called every frame from StorytellerAIService.ProcessPending()
         public static async Task ProcessPendingAudio()
@@ -30,8 +31,8 @@ namespace LivingStoryteller
                     await Task.Delay(500);
                 }
             
-                LogManager.Log("[LivingStoryteller][TTS] Has Pending Clip.");
-
+                LogManager.Log("[TTS] Has Pending Clip.");
+                ProcessingAudio = false;
                 pcm = pendingPcm;
                 pendingPcm = null;
                 hasPendingClip = false;
@@ -39,47 +40,44 @@ namespace LivingStoryteller
 
             if (pcm != null)
             {
-                LogManager.Log("[LivingStoryteller][TTS] Processing pending PCM data length = " + pcm.Length);
+                LogManager.Log("[TTS] Processing pending PCM data length = " + pcm.Length);
                 var clip = PCM16ToAudioClip(pcm, 24000);
                 if (clip != null)
                 {
-                    LogManager.Log("[LivingStoryteller][TTS] Clip samples = " + clip.samples);
+                    LogManager.Log("[TTS] Clip samples = " + clip.samples);
                     PlayClip(clip);
                 }
                 else
                 {
-                    Log.Warning("[LivingStoryteller][TTS] Failed to create AudioClip from PCM.");
+                    Log.Warning("[TTS] Failed to create AudioClip from PCM.");
                 }
             }
         }
 
         public static void RequestSpeech(string text, string voiceId)
         {
+            LogManager.Log("[TTS] RequestSpeech called. Text length = " + text.Length + ", voiceId = " + voiceId);
             var settings = ModOptions.Settings;
 
             if (settings.apiKey.NullOrEmpty())
             {
-                Log.Warning("[LivingStoryteller] No API key for TTS.");
+                Log.Warning("[LivingStoryteller][TTS] No API key for TTS.");
                 return;
             }
+
+            ProcessingAudio = true;
 
             Task.Run(async () =>
             {
                 try
                 {
-                    byte[] pcm = await CallTTSAPIAsync(
-                        settings.apiKey,
-                        voiceId,
-                        text);
+                    byte[] pcm = await CallTTSAPIAsync(settings.apiKey, voiceId, text);
 
                     if (pcm != null && pcm.Length > 0)
                     {
-                        LogManager.Log("[LivingStoryteller][TTS] Received PCM data length = " + pcm.Length);    
-                        //lock (audioLock)
-                        //{
-                            pendingPcm = pcm;
-                            hasPendingClip = true;
-                        //}
+                        LogManager.Log("[TTS] Received PCM data length = " + pcm.Length);    
+                        pendingPcm = pcm;
+                        hasPendingClip = true;
                     }
                     else
                     {
@@ -90,12 +88,11 @@ namespace LivingStoryteller
                 {
                     Log.Error("[LivingStoryteller] TTS failed: " + ex);
                 }
+
+                ProcessingAudio = false;
             });
         }
-        private static async Task<byte[]> CallTTSAPIAsync(
-    string apiKey,
-    string voiceId,
-    string text)
+        private static async Task<byte[]> CallTTSAPIAsync(string apiKey, string voiceId, string text)
         {
             var settings = ModOptions.Settings;
 
@@ -119,9 +116,9 @@ namespace LivingStoryteller
                     "\"model\":\"gemini-2.5-flash-preview-tts\"" +
                     "}";
 
-                LogManager.Log("[LivingStoryteller][TTS] Using GOOGLE TTS endpoint.");
-                LogManager.Log("[LivingStoryteller][TTS] URL = " + url);
-                LogManager.Log("[LivingStoryteller][TTS] JSON = " + json);
+                LogManager.Log("[TTS] Using GOOGLE TTS endpoint.");
+                LogManager.Log("[TTS] URL = " + url);
+                LogManager.Log("[TTS] JSON = " + json);
 
                 var content = new StringContent(json, Encoding.UTF8, "application/json");
 
@@ -129,7 +126,7 @@ namespace LivingStoryteller
                 {
                     resp.EnsureSuccessStatusCode();
                     string responseBody = await resp.Content.ReadAsStringAsync();
-                    LogManager.Log("[LivingStoryteller][TTS] responseBody status code = " + resp.StatusCode);
+                    LogManager.Log("[TTS] responseBody status code = " + resp.StatusCode);
 
                     var pcmData = ExtractInlinePCM(responseBody);
                     return pcmData;
@@ -157,7 +154,7 @@ namespace LivingStoryteller
                 return null;
 
             string base64 = responseBody.Substring(start, end - start);
-            LogManager.Log("[LivingStoryteller][TTS] Extracted base64 PCM length = " + base64.Length + "substring:" + base64.Substring(0, 10));
+            LogManager.Log("[TTS] Extracted base64 PCM length = " + base64.Length + "substring:" + base64.Substring(0, 10));
             return Convert.FromBase64String(base64);
         }
 
