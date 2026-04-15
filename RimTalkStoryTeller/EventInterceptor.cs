@@ -29,12 +29,6 @@ namespace LivingStoryteller
             string persona = personaDef.personaText;
             string voiceId = personaDef.voiceId;
 
-            persona += " Keep the narration concise, ideally under 100 words. " +
-                "Use a tone that fits the event. If it's a minor event, " +
-                "be brief and lighthearted. If it's a major crisis, be more " +
-                "serious and dramatic. Always relate it back to the colony's " +
-                "situation when possible. Keep the reading on a third grade level."+
-                "when talking to the player, do not refer to the player as 'player'.";
             string colonyContext = "";
             var map = Find.CurrentMap;
             if (map != null)
@@ -47,10 +41,7 @@ namespace LivingStoryteller
                     wealth.ToString("F0") + " wealth, day " + day + ".";
             }
 
-            StorytellerAIService.RequestNarration( eventName, incident.category.ToString(), persona, colonyContext, storyteller?.label ?? "Storyteller", voiceId);
-
-            LogManager.Log(
-                "[LivingStoryteller] Event intercepted: " + eventName);
+            StorytellerAIService.RequestNarration( eventName, incident.category.ToString(), persona, colonyContext, storyteller?.label ?? "Storyteller", defName);
         }
 
         private static string FormatEventName(string name)

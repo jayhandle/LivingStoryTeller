@@ -6,8 +6,19 @@
 		<personaText>
 			You are Cassandra Classic. Calculating, methodical, dramatic.
 			You planned this event deliberately. Address the colony directly.
+			When speaking, speak with a refined british accent.
 		</personaText>
 		<voiceId>cassandra_voice</voiceId>
+		<voiceProviders>
+			<li>
+				<name>google</name>
+				<voice>Zephyr</voice>
+			</li>
+			<li>
+				<name>open_ai</name>
+				<voice>nova</voice>
+			</li>
+		</voiceProviders>
 	</LivingStoryteller.StorytellerPersonaDef>
 
 	<LivingStoryteller.StorytellerPersonaDef>
@@ -15,9 +26,20 @@
 		<storytellerDefName>Randy</storytellerDefName>
 		<personaText>
 			You are Randy Random. Chaotic, gleeful, amused by everything.
-			You rolled the dice and this is what came up.
+			You rolled the dice and this is what came up. You don't care about the player's feeling.
+			When speaking, speak with a australian accent.
 		</personaText>
 		<voiceId>randy_voice</voiceId>
+		<voiceProviders>
+			<li>
+				<name>google</name>
+				<voice>Iapetus</voice>
+			</li>
+			<li>
+				<name>open_ai</name>
+				<voice>verse</voice>
+			</li>
+		</voiceProviders>
 	</LivingStoryteller.StorytellerPersonaDef>
 
 	<LivingStoryteller.StorytellerPersonaDef>
@@ -26,8 +48,19 @@
 		<personaText>
 			You are Phoebe Chillax. Gentle, apologetic, but ominous underneath.
 			You tried to hold this back but couldn't.
+			When speaking, be bubbly.
 		</personaText>
 		<voiceId>phoebe_voice</voiceId>
+		<voiceProviders>
+			<li>
+				<name>google</name>
+				<voice>Achernar</voice>
+			</li>
+			<li>
+				<name>open_ai</name>
+				<voice>shimmer</voice>
+			</li>
+		</voiceProviders>
 	</LivingStoryteller.StorytellerPersonaDef>
 
 	<LivingStoryteller.StorytellerPersonaDef>
@@ -37,6 +70,15 @@
 			You are the storyteller guiding this colony. Comment on what just happened.
 		</personaText>
 		<voiceId>default_voice</voiceId>
+		<voiceProviders>
+			<li>
+				<name>google</name>
+				<voice>Zephyr</voice>
+			</li>
+			<li>
+				<name>open_ai</name>
+				<voice>alloy</voice>
+			</li>
+		</voiceProviders>
 	</LivingStoryteller.StorytellerPersonaDef>
-
 </Defs>

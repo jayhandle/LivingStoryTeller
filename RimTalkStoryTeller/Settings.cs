@@ -1,43 +1,66 @@
-﻿using Verse;
+﻿using RimWorld;
+using Verse;
 
 namespace LivingStoryteller
 {
     public class StorytellerSettings : ModSettings
     {
-        public string apiKey = "";
-        public int provider = 0; // 0 = OpenAI, 1 = Google
-        public string modelName = "";
+        public string ApiKey = "";
+        public string ProviderName = "google";
+        public string ModelName = "gemini-2.5-flash";
+        public string Endpoint = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions";
+        public bool TTSEnabled = true;
+        public string TTSModelName = "gemini-2.5-flash-preview-tts";
+        public string TTSEndpoint = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=";
+        public string PersonaText = "The player is running a colony and you are the storyteller controlling events. " +
+            "An event just occurred. Respond in character in 2-4 sentences. Be dramatic. Address the player directly. " +
+            "Do not use quotation marks around your response. Keep the narration concise, ideally under 100 words. " +
+            "Use a tone that fits the event. If it's a minor event, be brief and lighthearted. " +
+            "If it's a major crisis, be more serious and dramatic. Always relate it back to the colony's situation when possible. " +
+            "Keep the reading on a third grade level. When talking to the player, do not refer to the player as 'player'.";
         public float displayDuration = 15f;
         public float cooldownSeconds = 60f;
         public bool DebugLogging = false;
-        public bool TTSEnabled = true;
 
-        public string GetEndpoint()
-        {
-            if (provider == 1)
-            {
-                return "https://generativelanguage.googleapis.com" +
-                    "/v1beta/openai/chat/completions";
-            }
-            return "https://api.openai.com/v1/chat/completions";
-        }
 
-        public string GetModel()
-        {
-            if (!modelName.NullOrEmpty()) return modelName;
-            if (provider == 1) return "gemini-2.5-flash";
-            return "gpt-4o-mini";
-        }
+
+        //public string GetEndpoint()
+        //{
+        //    return endpoint;
+        //    //return "https://api.openai.com/v1/chat/completions";
+        //}
+
+        //public string GetModel()
+        //{
+        //    return modelName;
+        //    //if (!modelName.NullOrEmpty()) return modelName;
+        //    //if (provider == 1) return "gemini-2.5-flash";
+        //    //return "gpt-4o-mini";
+        //}
+
+        //public string GetAPIKey() 
+        //{ 
+        //    return apiKey; 
+        //}
+
+        //public string GetProviderName()
+        //{
+        //    return providerName;
+        //}
 
         public override void ExposeData()
         {
-            Scribe_Values.Look(ref apiKey, "apiKey", "");
-            Scribe_Values.Look(ref provider, "provider", 0);
-            Scribe_Values.Look(ref modelName, "modelName", "");
+            Scribe_Values.Look(ref ApiKey, "apiKey", "");
+            Scribe_Values.Look(ref ProviderName, "providerName", "google");
+            Scribe_Values.Look(ref ModelName, "modelName", "");
+            Scribe_Values.Look(ref Endpoint, "endpoint", "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions");
+            Scribe_Values.Look(ref TTSEnabled, "TTSEnabled", true);
+            Scribe_Values.Look(ref TTSModelName, "ttsModelName", "gemini-2.5-flash-preview-tts");
+            Scribe_Values.Look(ref TTSEndpoint, "ttsEndpoint", "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=");
+            Scribe_Values.Look(ref PersonaText, "personaText", "The player is running a colony and you are the storyteller controlling events. An event just occurred. Respond in character in 2-4 sentences. Be dramatic. Address the player directly. Do not use quotation marks around your response.");
             Scribe_Values.Look(ref displayDuration, "displayDuration", 15f);
             Scribe_Values.Look(ref cooldownSeconds, "cooldownSeconds", 60f);
             Scribe_Values.Look(ref DebugLogging, "DebugLogging", false);
-            Scribe_Values.Look(ref TTSEnabled, "TTSEnabled", true);
 
             base.ExposeData();
         }

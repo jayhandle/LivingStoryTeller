@@ -1,4 +1,5 @@
-﻿using System;
+﻿using RimWorld;
+using System;
 using System.IO;
 using System.Net.Http;
 using System.Net.Http.Headers;
@@ -54,12 +55,12 @@ namespace LivingStoryteller
             }
         }
 
-        public static void RequestSpeech(string text, string voiceId)
+        public static void RequestSpeech(string text, string PersonaDefName)
         {
-            LogManager.Log("[TTS] RequestSpeech called. Text length = " + text.Length + ", voiceId = " + voiceId);
+            LogManager.Log("[TTS] RequestSpeech called. Text length = " + text.Length + ", PersonaDefName = " + PersonaDefName);
             var settings = ModOptions.Settings;
 
-            if (settings.apiKey.NullOrEmpty())
+            if (settings.ApiKey.NullOrEmpty())
             {
                 Log.Warning("[LivingStoryteller][TTS] No API key for TTS.");
                 return;
@@ -71,7 +72,7 @@ namespace LivingStoryteller
             {
                 try
                 {
-                    byte[] pcm = await CallTTSAPIAsync(settings.apiKey, voiceId, text);
+                    byte[] pcm = await CallTTSAPIAsync(settings.ApiKey, PersonaDefName, text);
 
                     if (pcm != null && pcm.Length > 0)
                     {
@@ -92,46 +93,39 @@ namespace LivingStoryteller
                 ProcessingAudio = false;
             });
         }
-        private static async Task<byte[]> CallTTSAPIAsync(string apiKey, string voiceId, string text)
+        private static async Task<byte[]> CallTTSAPIAsync(string apiKey, string PersonaDefName, string text)
         {
             var settings = ModOptions.Settings;
-
-            if (settings.provider == 0)
+            var provider = AIProviderFactory.CreateAIProvider();
+          
+            string url = settings.TTSEndpoint;
+            string voice = ResolveVoice(PersonaDefName, ModOptions.Settings.ProviderName);
+            if (voice.NullOrEmpty())
             {
-                // OPENAI – still fine to return AudioClip if WavUtility is main-thread safe,
-                // but to keep things consistent, I'd also return raw bytes here ideally.
-                // For now, leave as-is if it's working.
-                throw new NotImplementedException("Focus on Google branch for now.");
+                Log.Warning("[TTS] No voice mapping found for PersonaDefName: " + PersonaDefName + " with provider: " + ModOptions.Settings.ProviderName);
+                voice = ResolveVoice("FallbackPersona", ModOptions.Settings.ProviderName); // default fallback
             }
-            else
-            {
-                string url =
-                    "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=" + apiKey;
 
-                string googleVoice = ResolveGoogleVoice(voiceId);
+            LogManager.Log("[TTS] Resolved voice for " + PersonaDefName + " is " + voice);
 
-                string json =
-                    "{ \"contents\":[{\"parts\":[{\"text\": \" Speak with a refined British accent: " + Escape(text) + "\"}]}]," +
-                    "\"generationConfig\": { \"responseModalities\":[\"AUDIO\"], \"speechConfig\": { \"voiceConfig\": { \"prebuiltVoiceConfig\": { \"voiceName\": \"" + googleVoice + "\" }}}}," +
-                    "\"model\":\"gemini-2.5-flash-preview-tts\"" +
-                    "}";
+            string json = provider.JSONRequest(Escape(text), voice);
 
-                LogManager.Log("[TTS] Using GOOGLE TTS endpoint.");
-                LogManager.Log("[TTS] URL = " + url);
-                LogManager.Log("[TTS] JSON = " + json);
+            LogManager.Log($"[TTS] Using {ModOptions.Settings.ProviderName} TTS endpoint.");
+            LogManager.Log("[TTS] URL = " + url);
+            LogManager.Log("[TTS] JSON = " + json);
 
-                var content = new StringContent(json, Encoding.UTF8, "application/json");
+            var responseBody = await provider.GetResponse(json);
+            var pcmData = ExtractInlinePCM(responseBody);
+            return pcmData;
+            //using (var resp = await httpClient.PostAsync(url, content))
+            //{
+            //    resp.EnsureSuccessStatusCode();
+            //    string responseBody = await resp.Content.ReadAsStringAsync();
+            //    LogManager.Log("[TTS] responseBody status code = " + resp.StatusCode);
 
-                using (var resp = await httpClient.PostAsync(url, content))
-                {
-                    resp.EnsureSuccessStatusCode();
-                    string responseBody = await resp.Content.ReadAsStringAsync();
-                    LogManager.Log("[TTS] responseBody status code = " + resp.StatusCode);
+            //    
+            //}
 
-                    var pcmData = ExtractInlinePCM(responseBody);
-                    return pcmData;
-                }
-            }
         }
 
         private static byte[] ExtractInlinePCM(string responseBody)
@@ -175,7 +169,7 @@ namespace LivingStoryteller
 
             // Create AudioClip
             AudioClip clip = AudioClip.Create(
-                "GoogleTTS_Audio",
+                "TTS_Audio",
                 totalSamples,
                 1,              // mono
                 sampleRate,
@@ -185,34 +179,12 @@ namespace LivingStoryteller
             clip.SetData(floatData, 0);
             return clip;
         }
-        private static string ResolveGoogleVoice(string personaVoiceId)
-        {
-            switch (personaVoiceId)
-            {
-                case "cassandra_voice":
-                    return "Zephyr"; // calm female
-                case "randy_voice":
-                    return "en-US-Neural2-D"; // energetic male
-                case "phoebe_voice":
-                    return "en-US-Neural2-E"; // soft female
-                default:
-                    return "en-US-Neural2-A"; // fallback
-            }
-        }
 
-        private static string ResolveOpenAIVoice(string personaVoiceId)
+        private static string ResolveVoice(string PersonaDefName, string providerName)
         {
-            switch (personaVoiceId)
-            {
-                case "cassandra_voice":
-                    return "luna";
-                case "randy_voice":
-                    return "alloy";
-                case "phoebe_voice":
-                    return "sage";
-                default:
-                    return "alloy";
-            }
+            var voice = StorytellerPersonaDatabase.GetVoice(PersonaDefName, providerName);
+
+            return voice; 
         }
 
         private static void PlayClip(AudioClip clip)

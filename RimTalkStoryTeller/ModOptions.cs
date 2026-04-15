@@ -4,6 +4,7 @@ using System;
 using System.Reflection;
 using UnityEngine;
 using Verse;
+using static System.Net.WebRequestMethods;
 
 namespace LivingStoryteller
 {
@@ -31,22 +32,45 @@ namespace LivingStoryteller
             listing.Gap();
 
             // Provider toggle
-            string providerLabel = Settings.provider == 0
-                ? "OpenAI" : "Google AI Studio";
+            string providerLabel;// = Settings.ProviderName == "google" ? "Google AI Studio" : "OpenAI";
+
+            switch (Settings.ProviderName)
+            {
+                case "open_ai":
+                     providerLabel = "OpenAI";
+                    break;
+                default:
+                    providerLabel = "Google AI Studio";
+                    break;
+            }
+
             if (listing.ButtonText("Provider: " + providerLabel))
             {
-                Settings.provider = Settings.provider == 0 ? 1 : 0;
+                switch(Settings.ProviderName)
+                {
+                    case "open_ai":
+                        Settings.ProviderName = "open_ai";
+                        Settings.Endpoint = "https://api.openai.com/v1/chat/completions";
+                        Settings.TTSModelName = "gpt-4o-mini-tts";
+                        Settings.TTSEndpoint = "https://api.openai.com/v1/audio/speech"; 
+                        Settings.ModelName = "gpt-4o-mini";
+                        break;
+                    default:
+                        Settings.Endpoint = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions";
+                        Settings.TTSModelName = "gemini-2.5-flash-preview-tts";
+                        Settings.TTSEndpoint = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key="; 
+                        Settings.ModelName = "gemini-2.5-flash";
+                        break;
+                }
             }
 
             listing.Gap();
             listing.Label("API Key:");
-            Settings.apiKey = listing.TextEntry(Settings.apiKey);
+            Settings.ApiKey = listing.TextEntry(Settings.ApiKey);
 
             listing.Gap();
-            string defaultModel = Settings.provider == 0
-                ? "gpt-4o-mini" : "gemini-2.0-flash";
-            listing.Label("Model (blank = " + defaultModel + "):");
-            Settings.modelName = listing.TextEntry(Settings.modelName);
+            listing.Label("Model (blank = " + Settings.ModelName + "):");
+            Settings.ModelName = listing.TextEntry(Settings.ModelName);
 
             listing.Gap();
             listing.Label(
@@ -61,6 +85,12 @@ namespace LivingStoryteller
                 Settings.cooldownSeconds.ToString("F0") + " seconds");
             Settings.cooldownSeconds = listing.Slider(
                 Settings.cooldownSeconds, 10f, 300f);
+            
+            listing.Gap();
+            listing.GapLine();
+            listing.Gap();
+            listing.Label( "This is the general persona. If you do not know what you are doing, do not change it!");
+            Settings.PersonaText = listing.TextEntry(Settings.PersonaText, lineCount: 6);
 
             listing.End();
         }

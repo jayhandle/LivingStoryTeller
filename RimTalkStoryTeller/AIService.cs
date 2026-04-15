@@ -1,7 +1,9 @@
 ﻿using Extension.LivingStoryTeller;
+using Google.GenAI.Types;
 using System;
 using System.IO;
 using System.Net;
+using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
 using UnityEngine;
@@ -14,6 +16,7 @@ namespace LivingStoryteller
     {
         private static bool isWaiting = false;
         private static float lastNarrationTime = -999f;
+        private  static HttpClient httpClient = new HttpClient();
         private static List<string> eventProcessing = new List<string>();
         // Thread-safe narration queue
         private static readonly object pendingLock = new object();
@@ -123,7 +126,7 @@ namespace LivingStoryteller
             }
         }
 
-        public static void RequestNarration(string incidentLabel, string incidentCategory, string persona, string colonyContext, string storytellerName, string voiceId)
+        public static void RequestNarration(string incidentLabel, string incidentCategory, string persona, string colonyContext, string storytellerName, string PersonaDefName)
         {
             var eventKey = incidentLabel + "|" + incidentCategory;
             LogManager.Log("Requesting narration for event: " + incidentLabel + " (Category: " + incidentCategory + ") EventKey:" + eventKey);
@@ -139,9 +142,11 @@ namespace LivingStoryteller
                 eventProcessing.Add(eventKey);
             }
 
+            LogManager.Log(
+                "[LivingStoryteller] Event intercepted: " + eventKey);
             var settings = ModOptions.Settings;
 
-            if (settings.apiKey.NullOrEmpty())
+            if (settings.ApiKey.NullOrEmpty())
             {
                 Log.Warning( "[LivingStoryteller] No API key configured. " + "Go to Mod Settings > The Living Storyteller.");
                 eventProcessing.Remove(eventKey);
@@ -168,13 +173,7 @@ namespace LivingStoryteller
             // Cache portrait on MAIN THREAD
             Texture2D portrait = GetStorytellerPortrait();
 
-            string systemPrompt = persona +
-                "\n\nThe player is running a colony and you are " +
-                "the storyteller controlling events. An event " +
-                "just occurred. Respond in character in 2-4 " +
-                "sentences. Be dramatic. Address the player " +
-                "directly. Do not use quotation marks around " +
-                "your response.";
+            string systemPrompt = persona + settings.PersonaText;
 
             string userMessage = "Event: " + incidentLabel +
                 " (Category: " + incidentCategory + ")" +
@@ -182,23 +181,24 @@ namespace LivingStoryteller
                     ? "" : "\n" + colonyContext);
 
             string name = storytellerName;
-            string endpoint = settings.GetEndpoint();
-            string apiKey = settings.apiKey.Trim();
-            string model = settings.GetModel();
+            string endpoint = settings.Endpoint;
+            string apiKey = settings.ApiKey.Trim();
+            string model = settings.ModelName;
 
-            Task.Run(() =>
+            Task.Run(async() =>
             {
                 var retryCount = 3;
                 for (int i = 0; i < retryCount; i++)
                 {
                     try
                     {
+                        QueueLog("Calling AI API for narration (Attempt " + (i + 1) + "/" + retryCount + ")...");
                         string response = CallAPI( endpoint, apiKey, model, systemPrompt, userMessage);
 
                         if (!response.NullOrEmpty())
                         {
                             QueueLog("Narration received.");
-                            TTSService.RequestSpeech(response, voiceId);
+                            TTSService.RequestSpeech(response, PersonaDefName);
                             lock (pendingLock)
                             {
                                 pendingName = name;
@@ -263,39 +263,27 @@ namespace LivingStoryteller
                 "\"temperature\":0.9}";
 
             QueueLog("Sending API request to " + endpoint + " with model: " + json);
-            try
-            {
-                var request =
-                    (HttpWebRequest)WebRequest.Create(endpoint);
-                request.Method = "POST";
-                request.ContentType = "application/json";
-                request.Headers["Authorization"] =
-                    "Bearer " + apiKey;
-                request.Timeout = 30000;
-
-                using (var writer = new StreamWriter(
-                    request.GetRequestStream()))
+            var client = httpClient;
+            client.Timeout = TimeSpan.FromSeconds(30);
+            client.DefaultRequestHeaders.Clear();
+            client.DefaultRequestHeaders.Add("Authorization", "Bearer " + apiKey);
+            var content = new StringContent(json, Encoding.UTF8, "application/json");
+            try 
+            { 
+                using (var resp = client.PostAsync(endpoint, content).Result)
                 {
-                    writer.Write(json);
-                }
+                    resp.EnsureSuccessStatusCode();
+                    string responseBody = resp.Content.ReadAsStringAsync().Result;
+                    QueueLog("[LivingStoryteller] Raw API response: " + responseBody);
+                    // Debug logging via queue
+                    string preview = responseBody.Length > 500
+                        ? responseBody.Substring(0, 500) + "..."
+                        : responseBody;
 
-                string responseBody;
-                using (var response =
-                    (HttpWebResponse)request.GetResponse())
-                using (var reader = new StreamReader(
-                    response.GetResponseStream()))
-                {
-                    responseBody = reader.ReadToEnd();
-                }
+                    QueueLog("[LivingStoryteller] Raw API response: " + responseBody);
 
-                // Debug logging via queue
-                string preview = responseBody.Length > 500
-                    ? responseBody.Substring(0, 500) + "..."
-                    : responseBody;
-
-                QueueLog( "[LivingStoryteller] Raw API response: " + responseBody);
-
-                return ParseContent(responseBody);
+                    return ParseContent(responseBody);
+                }                        
             }
             catch (WebException wex)
             {
@@ -309,6 +297,53 @@ namespace LivingStoryteller
                 }
                 throw;
             }
+            
+            //try
+            //{
+            //    var request =
+            //        (HttpWebRequest)WebRequest.Create(endpoint);
+            //    request.Method = "POST";
+            //    request.ContentType = "application/json";
+            //    request.Headers["Authorization"] =
+            //        "Bearer " + apiKey;
+            //    request.Timeout = 30000;
+
+            //    using (var writer = new StreamWriter(
+            //        request.GetRequestStream()))
+            //    {
+            //        writer.Write(json);
+            //    }
+
+            //    string responseBody;
+            //    using (var response =
+            //        (HttpWebResponse)request.GetResponse())
+            //    using (var reader = new StreamReader(
+            //        response.GetResponseStream()))
+            //    {
+            //        responseBody = reader.ReadToEnd();
+            //    }
+
+            //    // Debug logging via queue
+            //    string preview = responseBody.Length > 500
+            //        ? responseBody.Substring(0, 500) + "..."
+            //        : responseBody;
+
+            //    QueueLog( "[LivingStoryteller] Raw API response: " + responseBody);
+
+            //    return ParseContent(responseBody);
+            //}
+            //catch (WebException wex)
+            //{
+            //    var httpResp =
+            //        wex.Response as HttpWebResponse;
+            //    if (httpResp != null &&
+            //        (int)httpResp.StatusCode == 429)
+            //    {
+            //        QueueLog("[LivingStoryteller] Rate limited. " + "Skipping this narration.", "warning");
+            //        return null;
+            //    }
+            //    throw;
+            //}
         }
 
         private static string ParseContent(string json)
