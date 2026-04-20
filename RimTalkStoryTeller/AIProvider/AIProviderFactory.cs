@@ -13,9 +13,9 @@ namespace LivingStoryteller
             if (ModOptions.Settings == null) return null;
             switch (ModOptions.Settings.ProviderName)
             {
-                case "google":
+                case StorytellerSettings.AIProvider.google:
                     return new GoogleProvider();
-                case "open_ai":
+                case StorytellerSettings.AIProvider.open_ai:
                     return new OpenAIProvider();
             }
 

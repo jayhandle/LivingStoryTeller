@@ -1,6 +1,8 @@
 ﻿using HarmonyLib;
 using RimWorld;
 using System;
+using System.Collections.Generic;
+using System.Configuration;
 using System.Reflection;
 using UnityEngine;
 using Verse;
@@ -32,24 +34,29 @@ namespace LivingStoryteller
             listing.Gap();
 
             // Provider toggle
-            string providerLabel;// = Settings.ProviderName == "google" ? "Google AI Studio" : "OpenAI";
+            string providerLabel = ConvertProviderToLabel(Settings.ProviderName);
 
-            switch (Settings.ProviderName)
+            listing.Label("AI Provider:");
+            if (listing.ButtonText(Settings.ProviderName.ToString()))
             {
-                case "open_ai":
-                     providerLabel = "OpenAI";
-                    break;
-                default:
-                    providerLabel = "Google AI Studio";
-                    break;
+                List<FloatMenuOption> options = new List<FloatMenuOption>();
+                foreach (StorytellerSettings.AIProvider provider in Enum.GetValues(typeof(StorytellerSettings.AIProvider)))
+                {
+                    options.Add(new FloatMenuOption(provider.ToString(), () =>
+                    {
+                        Settings.ProviderName = provider;
+                        providerLabel = ConvertProviderToLabel(Settings.ProviderName);
+                    }));
+                }
+                Find.WindowStack.Add(new FloatMenu(options));
             }
 
-            if (listing.ButtonText("Provider: " + providerLabel))
+
+            if (listing.ButtonText("Reset Defaults for: " + providerLabel))
             {
                 switch(Settings.ProviderName)
                 {
-                    case "open_ai":
-                        Settings.ProviderName = "open_ai";
+                    case StorytellerSettings.AIProvider.open_ai:
                         Settings.Endpoint = "https://api.openai.com/v1/chat/completions";
                         Settings.TTSModelName = "gpt-4o-mini-tts";
                         Settings.TTSEndpoint = "https://api.openai.com/v1/audio/speech"; 
@@ -93,6 +100,17 @@ namespace LivingStoryteller
             Settings.PersonaText = listing.TextEntry(Settings.PersonaText, lineCount: 6);
 
             listing.End();
+        }
+
+        private string ConvertProviderToLabel(StorytellerSettings.AIProvider provider)
+        {
+            switch (provider)
+            {
+                case StorytellerSettings.AIProvider.open_ai:
+                    return "OpenAI";
+                default:
+                    return "Google AI Studio";
+            }
         }
     }
 

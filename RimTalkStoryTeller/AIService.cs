@@ -1,5 +1,6 @@
 ﻿using Extension.LivingStoryTeller;
 using Google.GenAI.Types;
+using RimWorld;
 using System;
 using System.IO;
 using System.Net;
@@ -135,7 +136,7 @@ namespace LivingStoryteller
             {
                 if (eventProcessing.Contains(eventKey))
                 {
-                    LogManager.Log(persona + " is already processing a narration for this event. Skipping duplicate request.");
+                    LogManager.Log(eventKey + " is already processing a narration for this event. Skipping duplicate request.");
                     return;
                 }
 
@@ -173,12 +174,17 @@ namespace LivingStoryteller
             // Cache portrait on MAIN THREAD
             Texture2D portrait = GetStorytellerPortrait();
 
-            string systemPrompt = persona + settings.PersonaText;
+            string emotion = GetEmotion(incidentCategory, incidentLabel, PersonaDefName);
+            LogManager.Log($"emotion: {emotion}");
 
-            string userMessage = "Event: " + incidentLabel +
-                " (Category: " + incidentCategory + ")" +
-                (colonyContext.NullOrEmpty()
-                    ? "" : "\n" + colonyContext);
+            string systemPrompt = persona + settings.PersonaText
+            +"\n\nCurrent emotional tone: " + emotion + "." 
+            +"\nAdjust your narration style to match this emotion."; 
+
+            string userMessage = $"Event:{incidentLabel} (Category:{ incidentCategory})"+ 
+                (colonyContext.NullOrEmpty() ? "" : "\n" + colonyContext);
+            if (settings.UseEmotion) userMessage += $",\nEmotional tone:{emotion}";
+            if (settings.UseAccent) userMessage += $",\nAccent:{StorytellerPersonaDatabase.GetAccent(PersonaDefName)}";
 
             string name = storytellerName;
             string endpoint = settings.Endpoint;
@@ -198,7 +204,7 @@ namespace LivingStoryteller
                         if (!response.NullOrEmpty())
                         {
                             QueueLog("Narration received.");
-                            TTSService.RequestSpeech(response, PersonaDefName);
+                            TTSService.RequestSpeech(response, PersonaDefName, emotion);
                             lock (pendingLock)
                             {
                                 pendingName = name;
@@ -222,6 +228,22 @@ namespace LivingStoryteller
                 isWaiting = false;
                 eventProcessing.Remove(eventKey);
             });
+        }
+
+        private static string GetEmotion(string incidentCategory, string incidentLabel, string personaDef)
+        {
+            LogManager.Log($"Determining emotion for incidentCategory: {incidentCategory}, incidentLabel: {incidentLabel}, personaDef: {personaDef}");
+            var emotion = "neutral";
+            // Deaths
+            if (incidentLabel.Contains("Died") || incidentCategory == "PawnDeath") emotion = "somber";
+
+            // Big threats
+            if (incidentCategory == "ThreatBig") emotion = "tense";
+
+            // Randy chaos
+            if (incidentCategory == "ThreatSmall" || incidentCategory == "MajorThreat") emotion = "chaotic";
+
+            return StorytellerPersonaDatabase.GetEmotionalTone(personaDef, emotion);
         }
 
         private static Texture2D GetStorytellerPortrait()
@@ -256,7 +278,7 @@ namespace LivingStoryteller
                 "\"messages\":[" +
                 "{\"role\":\"system\",\"content\":\"" +
                     EscapeJson(systemPrompt) + "\"}," +
-                "{\"role\":\"user\",\"content\":\"" +
+                "{\"role\":\"user\",\"content\":\"{" +
                     EscapeJson(userMessage) + "\"}" +
                 "]," +
                 "\"max_tokens\":8192," +

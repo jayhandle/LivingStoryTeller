@@ -55,7 +55,7 @@ namespace LivingStoryteller
             }
         }
 
-        public static void RequestSpeech(string text, string PersonaDefName)
+        public static void RequestSpeech(string text, string PersonaDefName, string emotion)
         {
             LogManager.Log("[TTS] RequestSpeech called. Text length = " + text.Length + ", PersonaDefName = " + PersonaDefName);
             var settings = ModOptions.Settings;
@@ -72,7 +72,7 @@ namespace LivingStoryteller
             {
                 try
                 {
-                    byte[] pcm = await CallTTSAPIAsync(settings.ApiKey, PersonaDefName, text);
+                    byte[] pcm = await CallTTSAPIAsync(settings.ApiKey, PersonaDefName, text, emotion);
 
                     if (pcm != null && pcm.Length > 0)
                     {
@@ -93,22 +93,22 @@ namespace LivingStoryteller
                 ProcessingAudio = false;
             });
         }
-        private static async Task<byte[]> CallTTSAPIAsync(string apiKey, string PersonaDefName, string text)
+        private static async Task<byte[]> CallTTSAPIAsync(string apiKey, string PersonaDefName, string text, string emotion)
         {
             var settings = ModOptions.Settings;
             var provider = AIProviderFactory.CreateAIProvider();
           
             string url = settings.TTSEndpoint;
-            string voice = ResolveVoice(PersonaDefName, ModOptions.Settings.ProviderName);
+            string voice = ResolveVoice(PersonaDefName, ModOptions.Settings.ProviderName.ToString());
             if (voice.NullOrEmpty())
             {
                 Log.Warning("[TTS] No voice mapping found for PersonaDefName: " + PersonaDefName + " with provider: " + ModOptions.Settings.ProviderName);
-                voice = ResolveVoice("FallbackPersona", ModOptions.Settings.ProviderName); // default fallback
+                voice = ResolveVoice("FallbackPersona", ModOptions.Settings.ProviderName.ToString()); // default fallback
             }
 
             LogManager.Log("[TTS] Resolved voice for " + PersonaDefName + " is " + voice);
 
-            string json = provider.JSONRequest(Escape(text), voice);
+            string json = provider.JSONRequest(Escape(text), PersonaDefName, voice, emotion);
 
             LogManager.Log($"[TTS] Using {ModOptions.Settings.ProviderName} TTS endpoint.");
             LogManager.Log("[TTS] URL = " + url);

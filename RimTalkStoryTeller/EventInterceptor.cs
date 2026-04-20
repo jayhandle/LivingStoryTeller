@@ -37,8 +37,9 @@ namespace LivingStoryteller
                 float wealth = map.wealthWatcher.WealthTotal;
                 int day = GenDate.DaysPassed;
                 colonyContext =
-                    "Colony: " + colonists + " colonists, " +
-                    wealth.ToString("F0") + " wealth, day " + day + ".";
+                    $"Colony:{colonists} colonists," + 
+                    $"\nWealth:{wealth.ToString("F0")} wealth," +
+                    $"\nday:{day}";
             }
 
             StorytellerAIService.RequestNarration( eventName, incident.category.ToString(), persona, colonyContext, storyteller?.label ?? "Storyteller", defName);

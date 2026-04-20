@@ -5,12 +5,17 @@ namespace LivingStoryteller
 {
     public class StorytellerSettings : ModSettings
     {
+        public enum AIProvider
+        {
+            google,
+            open_ai
+        }
         public string ApiKey = "";
-        public string ProviderName = "google";
+        public AIProvider ProviderName = AIProvider.google;
         public string ModelName = "gemini-2.5-flash";
         public string Endpoint = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions";
         public bool TTSEnabled = true;
-        public string TTSModelName = "gemini-2.5-flash-preview-tts";
+        public string TTSModelName = "gemini-2.5-flash-tts";
         public string TTSEndpoint = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=";
         public string PersonaText = "The player is running a colony and you are the storyteller controlling events. " +
             "An event just occurred. Respond in character in 2-4 sentences. Be dramatic. Address the player directly. " +
@@ -21,6 +26,8 @@ namespace LivingStoryteller
         public float displayDuration = 15f;
         public float cooldownSeconds = 60f;
         public bool DebugLogging = false;
+        public bool UseAccent = true;
+        public bool UseEmotion = true;
 
 
 
@@ -51,7 +58,7 @@ namespace LivingStoryteller
         public override void ExposeData()
         {
             Scribe_Values.Look(ref ApiKey, "apiKey", "");
-            Scribe_Values.Look(ref ProviderName, "providerName", "google");
+            Scribe_Values.Look(ref ProviderName, "providerName", AIProvider.google);
             Scribe_Values.Look(ref ModelName, "modelName", "");
             Scribe_Values.Look(ref Endpoint, "endpoint", "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions");
             Scribe_Values.Look(ref TTSEnabled, "TTSEnabled", true);

@@ -8,7 +8,7 @@ namespace LivingStoryteller
     {
         private static readonly HttpClient httpClient = new HttpClient();
 
-        public string JSONRequest(string text, string voiceType)
+        public string JSONRequest(string text, string personaDef, string voiceType, string emotion)
         {
             var json = new
             {
