@@ -37,12 +37,12 @@ namespace LivingStoryteller
             string providerLabel = ConvertProviderToLabel(Settings.ProviderName);
 
             listing.Label("AI Provider:");
-            if (listing.ButtonText(Settings.ProviderName.ToString()))
+            if (listing.ButtonText(ConvertProviderToLabel(Settings.ProviderName)))
             {
                 List<FloatMenuOption> options = new List<FloatMenuOption>();
                 foreach (StorytellerSettings.AIProvider provider in Enum.GetValues(typeof(StorytellerSettings.AIProvider)))
                 {
-                    options.Add(new FloatMenuOption(provider.ToString(), () =>
+                    options.Add(new FloatMenuOption(ConvertProviderToLabel(provider), () =>
                     {
                         Settings.ProviderName = provider;
                         providerLabel = ConvertProviderToLabel(Settings.ProviderName);
