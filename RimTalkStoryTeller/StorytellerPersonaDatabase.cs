@@ -59,5 +59,10 @@ namespace LivingStoryteller
         {
             return GetPersonaDef(storytellerDefName)?.GetEmotion(emotion) ?? "";
         }
+
+        internal static string GetMood(string storytellerDefName, string mood)
+        {
+            return GetPersonaDef(storytellerDefName)?.GetMood(mood) ?? "";
+        }
     }
 }

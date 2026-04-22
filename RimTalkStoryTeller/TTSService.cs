@@ -55,7 +55,7 @@ namespace LivingStoryteller
             }
         }
 
-        public static void RequestSpeech(string text, string PersonaDefName, string emotion)
+        public static void RequestSpeech(string text, string PersonaDefName, string emotion, string mood)
         {
             LogManager.Log("[TTS] RequestSpeech called. Text length = " + text.Length + ", PersonaDefName = " + PersonaDefName);
             var settings = ModOptions.Settings;
@@ -72,7 +72,7 @@ namespace LivingStoryteller
             {
                 try
                 {
-                    byte[] pcm = await CallTTSAPIAsync(settings.ApiKey, PersonaDefName, text, emotion);
+                    byte[] pcm = await CallTTSAPIAsync(settings.ApiKey, PersonaDefName, text, emotion, mood);
 
                     if (pcm != null && pcm.Length > 0)
                     {
@@ -93,7 +93,7 @@ namespace LivingStoryteller
                 ProcessingAudio = false;
             });
         }
-        private static async Task<byte[]> CallTTSAPIAsync(string apiKey, string PersonaDefName, string text, string emotion)
+        private static async Task<byte[]> CallTTSAPIAsync(string apiKey, string PersonaDefName, string text, string emotion, string mood)
         {
             var settings = ModOptions.Settings;
             var provider = AIProviderFactory.CreateAIProvider();
@@ -108,7 +108,7 @@ namespace LivingStoryteller
 
             LogManager.Log("[TTS] Resolved voice for " + PersonaDefName + " is " + voice);
 
-            string json = provider.JSONRequest(Escape(text), PersonaDefName, voice, emotion);
+            string json = provider.JSONRequest(Escape(text), PersonaDefName, voice, emotion, mood);
 
             LogManager.Log($"[TTS] Using {ModOptions.Settings.ProviderName} TTS endpoint.");
             LogManager.Log("[TTS] URL = " + url);
@@ -117,15 +117,6 @@ namespace LivingStoryteller
             var responseBody = await provider.GetResponse(json);
             var pcmData = ExtractInlinePCM(responseBody);
             return pcmData;
-            //using (var resp = await httpClient.PostAsync(url, content))
-            //{
-            //    resp.EnsureSuccessStatusCode();
-            //    string responseBody = await resp.Content.ReadAsStringAsync();
-            //    LogManager.Log("[TTS] responseBody status code = " + resp.StatusCode);
-
-            //    
-            //}
-
         }
 
         private static byte[] ExtractInlinePCM(string responseBody)

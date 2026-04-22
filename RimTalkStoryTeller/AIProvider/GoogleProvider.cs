@@ -1,8 +1,5 @@
-﻿using Newtonsoft.Json;
-using RimWorld;
-using System.Net.Http;
+﻿using System.Net.Http;
 using System.Text;
-using UnityEngine.Windows;
 
 namespace LivingStoryteller
 {
@@ -34,11 +31,11 @@ namespace LivingStoryteller
         }
 
 
-        public string JSONRequest(string text, string personaDef, string voice, string emotion)
+        public string JSONRequest(string text, string personaDef, string voice, string emotion, string mood)
         {
             var promptBuilder = $"{StorytellerPersonaDatabase.GetPersonaText(personaDef)}.";
             if (ModOptions.Settings.UseAccent) promptBuilder += $" Your accent is {StorytellerPersonaDatabase.GetAccent(personaDef)}.";
-            if (ModOptions.Settings.UseEmotion) promptBuilder += $" Your emotional tone is {StorytellerPersonaDatabase.GetEmotionalTone(personaDef, "neutral")}.";
+            if (ModOptions.Settings.UseEmotion) promptBuilder += $" Your emotional tone is {emotion}. Your mood is {mood}";
 
             string json =
                 $@"{{""contents"":

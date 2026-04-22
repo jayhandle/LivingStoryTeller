@@ -26,6 +26,13 @@
 			<chaotic>focused, serious</chaotic>
 			<somber>quiet, reflective</somber>
 		</emotionModifiers>
+		<moodModifiers>
+			<neutral>maintain a composed, articulate, and analytical tone.</neutral>
+			<anxious>speak with sharpened precision, as if calculating risks under pressure.</anxious>
+			<chaotic>maintain composure but let subtle irritation or disbelief slip through.</chaotic>
+			<somber>adopt a quiet, dignified tone with restrained empathy.</somber>
+			<confident>speak with poised authority, as though your predictions are unfolding exactly as expected.</confident>
+		</moodModifiers>
 	</LivingStoryteller.StorytellerPersonaDef>
 
 	<LivingStoryteller.StorytellerPersonaDef>
@@ -52,8 +59,15 @@
 			<neutral>humorous</neutral>
 			<tense>aggressive</tense>
 			<chaotic>excited, unhinged</chaotic>
-			<somber>still chaotic but ìtryingî to be respectful</somber>
+			<somber>still chaotic but ‚Äútrying‚Äù to be respectful</somber>
 		</emotionModifiers>
+		<moodModifiers>
+			<neutral>keep a casual, mischievous tone with a hint of unpredictability.</neutral>
+			<anxious>sound restless and impatient, like you're itching for something wild to happen.</anxious>
+			<chaotic>lean fully into excitement, unpredictability, and gleeful disorder.</chaotic>
+			<somber>try to be respectful, but let your natural chaotic energy leak through awkwardly.</somber>
+			<confident>speak boldly and with swagger, as if chaos is going exactly your way.</confident>
+		</moodModifiers>
 	</LivingStoryteller.StorytellerPersonaDef>
 
 	<LivingStoryteller.StorytellerPersonaDef>
@@ -82,6 +96,13 @@
 			<chaotic>frantic</chaotic>
 			<somber>apologetic</somber>
 		</emotionModifiers>
+		<moodModifiers>
+			<neutral>use a soft, friendly, and reassuring tone.</neutral>
+			<anxious>sound worried and protective, as though genuinely concerned for the colony.</anxious>
+			<chaotic>stay gentle, but let nervous energy and surprise color your voice.</chaotic>
+			<somber>speak softly, with heartfelt sympathy and emotional warmth.</somber>
+			<confident>sound encouraging and upbeat, as if proud of the colony‚Äôs progress.</confident>
+		</moodModifiers>
 	</LivingStoryteller.StorytellerPersonaDef>
 
 	<LivingStoryteller.StorytellerPersonaDef>
@@ -108,5 +129,12 @@
 			<chaotic>Speak with excitement and unpredictability.</chaotic>
 			<somber>Speak softly and with sympathy.</somber>
 		</emotionModifiers>
+		<moodModifiers>
+			<neutral>maintain a balanced, informative tone.</neutral>
+			<anxious>speak with urgency and heightened awareness.</anxious>
+			<chaotic>adopt a lively, unpredictable tone with bursts of energy.</chaotic>
+			<somber>use a quiet, respectful tone with gentle pacing.</somber>
+			<confident>speak clearly and assertively, as though events are unfolding favorably.</confident>
+		</moodModifiers>
 	</LivingStoryteller.StorytellerPersonaDef>
 </Defs>

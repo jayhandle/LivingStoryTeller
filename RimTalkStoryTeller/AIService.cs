@@ -15,6 +15,10 @@ namespace LivingStoryteller
     [StaticConstructorOnStartup]
     public static class StorytellerAIService
     {
+        private static float moodStress = 0f;        // rises with disasters, starvation, injuries
+        private static float moodChaos = 0f;         // rises with raids, threats, explosions
+        private static float moodSympathy = 0f;      // rises with pawn deaths, mental breaks
+        private static float moodConfidence = 0f;    // rises with wealth, victories, growth
         private static bool isWaiting = false;
         private static float lastNarrationTime = -999f;
         private  static HttpClient httpClient = new HttpClient();
@@ -115,6 +119,20 @@ namespace LivingStoryteller
                     }
                 }
             }
+
+            //Process mood over time
+            DecayMood();
+        }
+
+        private static void DecayMood()
+        {
+            LogManager.Log($"Decaying mood. Before decay - Stress: {moodStress}, Chaos: {moodChaos}, Sympathy: {moodSympathy}, Confidence: {moodConfidence}");
+            float decay = 0.001f; // slow decay per frame
+
+            moodStress = Mathf.Max(0f, moodStress - decay);
+            moodChaos = Mathf.Max(0f, moodChaos - decay);
+            moodSympathy = Mathf.Max(0f, moodSympathy - decay);
+            moodConfidence = Mathf.Max(0f, moodConfidence - decay);
         }
 
         private static void QueueLog(
@@ -174,17 +192,35 @@ namespace LivingStoryteller
             // Cache portrait on MAIN THREAD
             Texture2D portrait = GetStorytellerPortrait();
 
-            string emotion = GetEmotion(incidentCategory, incidentLabel, PersonaDefName);
-            LogManager.Log($"emotion: {emotion}");
 
-            string systemPrompt = persona + settings.PersonaText
-            +"\n\nCurrent emotional tone: " + emotion + "." 
-            +"\nAdjust your narration style to match this emotion."; 
 
-            string userMessage = $"Event:{incidentLabel} (Category:{ incidentCategory})"+ 
-                (colonyContext.NullOrEmpty() ? "" : "\n" + colonyContext);
-            if (settings.UseEmotion) userMessage += $",\nEmotional tone:{emotion}";
-            if (settings.UseAccent) userMessage += $",\nAccent:{StorytellerPersonaDatabase.GetAccent(PersonaDefName)}";
+            string systemPrompt = persona + settings.PersonaText;
+            string userMessage = $"Event:{incidentLabel} (Category:{ incidentCategory})"+ (colonyContext.NullOrEmpty() ? "" : "\n" + colonyContext);
+            string emotion = string.Empty;
+            string mood = string.Empty;
+            if (settings.UseEmotion)
+            {
+                emotion = GetEmotion(incidentCategory, incidentLabel, PersonaDefName);
+                LogManager.Log($"emotion: {emotion}");
+                mood = GetMoodDescriptor(PersonaDefName);
+                LogManager.Log($"mood: {mood}");
+                UpdateMood(incidentCategory, incidentLabel);
+
+                systemPrompt += $"\nCurrent emotional tone:{emotion}.";
+                systemPrompt += $"\nCurrent storyteller mood:{mood}.";
+
+                systemPrompt += "\nAdjust your narration style to reflect both the immediate emotion and the long-term mood.";
+
+                userMessage += $",\nEmotional tone:{emotion}";
+                userMessage += $"\nmood:{mood}.";
+
+            }
+            if (settings.UseAccent)
+            {
+                var accent = StorytellerPersonaDatabase.GetAccent(PersonaDefName);
+                systemPrompt += $"\nUse Accent:{accent}.";
+                userMessage += $",\nAccent:{accent}";
+            }
 
             string name = storytellerName;
             string endpoint = settings.Endpoint;
@@ -204,7 +240,7 @@ namespace LivingStoryteller
                         if (!response.NullOrEmpty())
                         {
                             QueueLog("Narration received.");
-                            TTSService.RequestSpeech(response, PersonaDefName, emotion);
+                            TTSService.RequestSpeech(response, PersonaDefName, emotion, mood);
                             lock (pendingLock)
                             {
                                 pendingName = name;
@@ -230,6 +266,40 @@ namespace LivingStoryteller
             });
         }
 
+        private static void UpdateMood(string category, string label)
+        {
+            // Pawn death → sympathy + stress
+            if (label.Contains("Died") || category == "PawnDeath")
+            {
+                moodSympathy += 0.4f;
+                moodStress += 0.2f;
+            }
+
+            // Big threats → chaos + stress
+            if (category == "ThreatBig")
+            {
+                moodChaos += 0.5f;
+                moodStress += 0.3f;
+            }
+
+            // Small threats → chaos
+            if (category == "ThreatSmall" || category == "MajorThreat")
+            {
+                moodChaos += 0.3f;
+            }
+
+            // Positive events → confidence
+            if (label.Contains("Inspired") || label.Contains("Marriage") || label.Contains("Birth"))
+            {
+                moodConfidence += 0.4f;
+            }
+
+            // Clamp values
+            moodStress = Mathf.Clamp(moodStress, 0f, 5f);
+            moodChaos = Mathf.Clamp(moodChaos, 0f, 5f);
+            moodSympathy = Mathf.Clamp(moodSympathy, 0f, 5f);
+            moodConfidence = Mathf.Clamp(moodConfidence, 0f, 5f);
+        }
         private static string GetEmotion(string incidentCategory, string incidentLabel, string personaDef)
         {
             LogManager.Log($"Determining emotion for incidentCategory: {incidentCategory}, incidentLabel: {incidentLabel}, personaDef: {personaDef}");
@@ -244,6 +314,18 @@ namespace LivingStoryteller
             if (incidentCategory == "ThreatSmall" || incidentCategory == "MajorThreat") emotion = "chaotic";
 
             return StorytellerPersonaDatabase.GetEmotionalTone(personaDef, emotion);
+        }
+
+        private static string GetMoodDescriptor(string personaDef)
+        {
+            LogManager.Log($"Determining mood descriptor for personaDef: {personaDef}. Current mood values - Stress: {moodStress}, Chaos: {moodChaos}, Sympathy: {moodSympathy}, Confidence: {moodConfidence}");
+            var mood = "neutral";
+            if (moodStress > 3f) mood = "anxious";
+            if (moodChaos > 3f) mood = "chaotic";
+            if (moodSympathy > 3f) mood = "somber";
+            if (moodConfidence > 3f) mood = "confident";
+
+            return StorytellerPersonaDatabase.GetMood(personaDef, mood);
         }
 
         private static Texture2D GetStorytellerPortrait()
