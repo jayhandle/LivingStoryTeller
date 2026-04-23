@@ -8,9 +8,12 @@ namespace LivingStoryteller
         public enum AIProvider
         {
             google,
-            open_ai
+            open_ai,
+            custom
         }
         public string ApiKey = "";
+        public string TTSApiKey = "";
+
         public AIProvider ProviderName = AIProvider.google;
         public string ModelName = "gemini-2.5-flash";
         public string Endpoint = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions";
@@ -29,35 +32,10 @@ namespace LivingStoryteller
         public bool UseAccent = true;
         public bool UseEmotion = true;
 
-
-
-        //public string GetEndpoint()
-        //{
-        //    return endpoint;
-        //    //return "https://api.openai.com/v1/chat/completions";
-        //}
-
-        //public string GetModel()
-        //{
-        //    return modelName;
-        //    //if (!modelName.NullOrEmpty()) return modelName;
-        //    //if (provider == 1) return "gemini-2.5-flash";
-        //    //return "gpt-4o-mini";
-        //}
-
-        //public string GetAPIKey() 
-        //{ 
-        //    return apiKey; 
-        //}
-
-        //public string GetProviderName()
-        //{
-        //    return providerName;
-        //}
-
         public override void ExposeData()
         {
             Scribe_Values.Look(ref ApiKey, "apiKey", "");
+            Scribe_Values.Look(ref TTSApiKey, "ttsApiKey", "");
             Scribe_Values.Look(ref ProviderName, "providerName", AIProvider.google);
             Scribe_Values.Look(ref ModelName, "modelName", "");
             Scribe_Values.Look(ref Endpoint, "endpoint", "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions");

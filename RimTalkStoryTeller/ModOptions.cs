@@ -13,6 +13,7 @@ namespace LivingStoryteller
     public class ModOptions : Mod
     {
         public static StorytellerSettings Settings;
+        private Vector2 optionScrollPos;
 
         public ModOptions(ModContentPack content) : base(content)
         {
@@ -27,9 +28,9 @@ namespace LivingStoryteller
         public override void DoSettingsWindowContents(Rect inRect)
         {
             Listing_Standard listing = new Listing_Standard();
-            listing.Begin(inRect);
+            Widgets.BeginScrollView(inRect, ref optionScrollPos, new Rect(0f, 0f, inRect.width, inRect.height + 400), true);
+            listing.Begin(new Rect(0, 0, inRect.width - 25, inRect.height + 300));
 
-            listing.Label("Enable Debug Logging");
             listing.CheckboxLabeled( "Enable Debug Logging",ref Settings.DebugLogging);
             listing.Gap();
 
@@ -72,12 +73,39 @@ namespace LivingStoryteller
             }
 
             listing.Gap();
+            listing.Label("Model (blank = " + Settings.ModelName + "):");
+            Settings.ModelName = listing.TextEntry(Settings.ModelName);
+
+            listing.Gap();
+            listing.Label("Endpoint:");
+            Settings.Endpoint = listing.TextEntry(Settings.Endpoint);
+
+            listing.Gap();
             listing.Label("API Key:");
             Settings.ApiKey = listing.TextEntry(Settings.ApiKey);
 
             listing.Gap();
-            listing.Label("Model (blank = " + Settings.ModelName + "):");
-            Settings.ModelName = listing.TextEntry(Settings.ModelName);
+            listing.CheckboxLabeled("Enable TTS", ref Settings.TTSEnabled);
+
+            if (Settings.TTSEnabled) 
+            {
+                listing.GapLine();
+
+                listing.Gap();
+                listing.Label("TTS Model (blank = " + Settings.TTSModelName + "):");
+                Settings.TTSModelName = listing.TextEntry(Settings.TTSModelName);
+
+                listing.Gap();
+                listing.Label("TTS Endpoint:");
+                Settings.Endpoint = listing.TextEntry(Settings.TTSEndpoint);
+
+                listing.Gap();
+                listing.Label("TTS API Key:");
+                Settings.TTSApiKey = listing.TextEntry(Settings.TTSApiKey ?? Settings.ApiKey);
+
+            }
+
+            listing.GapLine();
 
             listing.Gap();
             listing.Label(
@@ -98,8 +126,8 @@ namespace LivingStoryteller
             listing.Gap();
             listing.Label( "This is the general persona. If you do not know what you are doing, do not change it!");
             Settings.PersonaText = listing.TextEntry(Settings.PersonaText, lineCount: 6);
-
             listing.End();
+            Widgets.EndScrollView();
         }
 
         private string ConvertProviderToLabel(StorytellerSettings.AIProvider provider)
@@ -108,6 +136,8 @@ namespace LivingStoryteller
             {
                 case StorytellerSettings.AIProvider.open_ai:
                     return "OpenAI";
+                case StorytellerSettings.AIProvider.custom:
+                    return "Custom";
                 default:
                     return "Google AI Studio";
             }

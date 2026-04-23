@@ -58,7 +58,7 @@ namespace LivingStoryteller
                 }
             }
 
-            if(TTSService.ProcessingAudio)
+            if(ModOptions.Settings.TTSEnabled && TTSService.ProcessingAudio)
             {
                 return;
             }
@@ -240,7 +240,7 @@ namespace LivingStoryteller
                         if (!response.NullOrEmpty())
                         {
                             QueueLog("Narration received.");
-                            TTSService.RequestSpeech(response, PersonaDefName, emotion, mood);
+                            if(settings.TTSEnabled) TTSService.RequestSpeech(response, PersonaDefName, emotion, mood);
                             lock (pendingLock)
                             {
                                 pendingName = name;
@@ -401,53 +401,6 @@ namespace LivingStoryteller
                 }
                 throw;
             }
-            
-            //try
-            //{
-            //    var request =
-            //        (HttpWebRequest)WebRequest.Create(endpoint);
-            //    request.Method = "POST";
-            //    request.ContentType = "application/json";
-            //    request.Headers["Authorization"] =
-            //        "Bearer " + apiKey;
-            //    request.Timeout = 30000;
-
-            //    using (var writer = new StreamWriter(
-            //        request.GetRequestStream()))
-            //    {
-            //        writer.Write(json);
-            //    }
-
-            //    string responseBody;
-            //    using (var response =
-            //        (HttpWebResponse)request.GetResponse())
-            //    using (var reader = new StreamReader(
-            //        response.GetResponseStream()))
-            //    {
-            //        responseBody = reader.ReadToEnd();
-            //    }
-
-            //    // Debug logging via queue
-            //    string preview = responseBody.Length > 500
-            //        ? responseBody.Substring(0, 500) + "..."
-            //        : responseBody;
-
-            //    QueueLog( "[LivingStoryteller] Raw API response: " + responseBody);
-
-            //    return ParseContent(responseBody);
-            //}
-            //catch (WebException wex)
-            //{
-            //    var httpResp =
-            //        wex.Response as HttpWebResponse;
-            //    if (httpResp != null &&
-            //        (int)httpResp.StatusCode == 429)
-            //    {
-            //        QueueLog("[LivingStoryteller] Rate limited. " + "Skipping this narration.", "warning");
-            //        return null;
-            //    }
-            //    throw;
-            //}
         }
 
         private static string ParseContent(string json)
