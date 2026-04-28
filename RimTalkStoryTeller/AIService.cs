@@ -34,29 +34,43 @@ namespace LivingStoryteller
 
         // Thread-safe log queue
         private static readonly object logLock = new object();
-        private static string pendingLog;
-        private static string pendingLogLevel;
+        private static List<string> pendingLog = new List<string>();
 
         public static void ProcessPending()
         {
             // Process pending logs
             lock (logLock)
             {
-                if (pendingLog != null)
+                if (pendingLog.Any())
                 {
-                    string msg = pendingLog;
-                    string level = pendingLogLevel;
-                    pendingLog = null;
-                    pendingLogLevel = null;
+                    while (pendingLog.Count() > 1)
+                    {
+                        var kvp = pendingLog[0];
+                        var split = kvp.Split('|');
+                        string msg = split[0];
+                        string level = split[1];
+                        if (level == "error")
+                            Log.Error(msg);
+                        else if (level == "warning")
+                            Log.Warning(msg);
+                        else
+                            LogManager.Log(msg);
+                        pendingLog.RemoveAt(0);
+                    }
+                    //string msg = pendingLog;
+                    //string level = pendingLogLevel;
+                    //pendingLog = null;
+                    //pendingLogLevel = null;
 
-                    if (level == "error")
-                        Log.Error(msg);
-                    else if (level == "warning")
-                        Log.Warning(msg);
-                    else
-                        LogManager.Log(msg);
+                    //if (level == "error")
+                    //    Log.Error(msg);
+                    //else if (level == "warning")
+                    //    Log.Warning(msg);
+                    //else
+                    //    LogManager.Log(msg);
                 }
             }
+            
 
             if(ModOptions.Settings.TTSEnabled && TTSService.ProcessingAudio)
             {
@@ -135,13 +149,11 @@ namespace LivingStoryteller
             moodConfidence = Mathf.Max(0f, moodConfidence - decay);
         }
 
-        private static void QueueLog(
-            string message, string level = "message")
+        private static void QueueLog(string message, string level = "message")
         {
             lock (logLock)
             {
-                pendingLog = message;
-                pendingLogLevel = level;
+                pendingLog.Add($"{message}|{level}");
             }
         }
 
@@ -198,6 +210,7 @@ namespace LivingStoryteller
             string userMessage = $"Event:{incidentLabel} (Category:{ incidentCategory})"+ (colonyContext.NullOrEmpty() ? "" : "\n" + colonyContext);
             string emotion = string.Empty;
             string mood = string.Empty;
+            LogManager.Log($"Use Accent: {settings.UseEmotion}");
             if (settings.UseEmotion)
             {
                 emotion = GetEmotion(incidentCategory, incidentLabel, PersonaDefName);
@@ -215,9 +228,11 @@ namespace LivingStoryteller
                 userMessage += $"\nmood:{mood}.";
 
             }
+            LogManager.Log($"Use Accent: {settings.UseAccent}");
             if (settings.UseAccent)
             {
                 var accent = StorytellerPersonaDatabase.GetAccent(PersonaDefName);
+                LogManager.Log($"accent: {accent}");
                 systemPrompt += $"\nUse Accent:{accent}.";
                 userMessage += $",\nAccent:{accent}";
             }
@@ -268,6 +283,7 @@ namespace LivingStoryteller
 
         private static void UpdateMood(string category, string label)
         {
+            LogManager.Log($"Updating mood based on event. Category: {category}, Label: {label}");
             // Pawn death → sympathy + stress
             if (label.Contains("Died") || category == "PawnDeath")
             {
@@ -366,7 +382,7 @@ namespace LivingStoryteller
                 "\"max_tokens\":8192," +
                 "\"temperature\":0.9}";
 
-            QueueLog("Sending API request to " + endpoint + " with model: " + json);
+            QueueLog($"Sending API request to { endpoint } with api key: {apiKey}: and model:{json}");
             var client = httpClient;
             client.Timeout = TimeSpan.FromSeconds(30);
             client.DefaultRequestHeaders.Clear();

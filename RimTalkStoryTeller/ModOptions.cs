@@ -97,7 +97,7 @@ namespace LivingStoryteller
 
                 listing.Gap();
                 listing.Label("TTS Endpoint:");
-                Settings.Endpoint = listing.TextEntry(Settings.TTSEndpoint);
+                Settings.TTSEndpoint = listing.TextEntry(Settings.TTSEndpoint);
 
                 listing.Gap();
                 listing.Label("TTS API Key:");

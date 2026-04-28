@@ -25,7 +25,7 @@ namespace LivingStoryteller
             "Do not use quotation marks around your response. Keep the narration concise, ideally under 100 words. " +
             "Use a tone that fits the event. If it's a minor event, be brief and lighthearted. " +
             "If it's a major crisis, be more serious and dramatic. Always relate it back to the colony's situation when possible. " +
-            "Keep the reading on a third grade level. When talking to the player, do not refer to the player as 'player'.";
+            "Keep the reading on a third grade level. When talking to the player, do not refer to the player as 'Player' or 'Player Name'.";
         public float displayDuration = 15f;
         public float cooldownSeconds = 60f;
         public bool DebugLogging = false;
@@ -42,7 +42,12 @@ namespace LivingStoryteller
             Scribe_Values.Look(ref TTSEnabled, "TTSEnabled", true);
             Scribe_Values.Look(ref TTSModelName, "ttsModelName", "gemini-2.5-flash-preview-tts");
             Scribe_Values.Look(ref TTSEndpoint, "ttsEndpoint", "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=");
-            Scribe_Values.Look(ref PersonaText, "personaText", "The player is running a colony and you are the storyteller controlling events. An event just occurred. Respond in character in 2-4 sentences. Be dramatic. Address the player directly. Do not use quotation marks around your response.");
+            Scribe_Values.Look(ref PersonaText, "personaText", "The player is running a colony and you are the storyteller controlling events. " +
+            "An event just occurred. Respond in character in 2-4 sentences. Be dramatic. Address the player directly. " +
+            "Do not use quotation marks around your response. Keep the narration concise, ideally under 100 words. " +
+            "Use a tone that fits the event. If it's a minor event, be brief and lighthearted. " +
+            "If it's a major crisis, be more serious and dramatic. Always relate it back to the colony's situation when possible. " +
+            "Keep the reading on a third grade level. When talking to the player, do not refer to the player as 'Player' or 'Player Name'.");
             Scribe_Values.Look(ref displayDuration, "displayDuration", 15f);
             Scribe_Values.Look(ref cooldownSeconds, "cooldownSeconds", 60f);
             Scribe_Values.Look(ref DebugLogging, "DebugLogging", false);
