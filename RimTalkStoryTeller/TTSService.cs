@@ -108,7 +108,7 @@ namespace LivingStoryteller
 
             string json = AIProviderFactory.JSONTTSRequest(Escape(text), PersonaDefName, voice, emotion, mood);
 
-            LogManager.Log($"[TTS] Using {ModOptions.Settings.ProviderName} TTS endpoint.");
+            LogManager.Log($"[TTS] Using {ModOptions.Settings.TTSProviderName} TTS endpoint.");
             LogManager.Log("[TTS] URL = " + url);
             LogManager.Log("[TTS] JSON = " + json);
 

@@ -14,7 +14,7 @@ namespace LivingStoryteller
             var content = new StringContent(json, Encoding.UTF8, "application/json");
             var url = ModOptions.Settings.TTSEndpoint + ModOptions.Settings.ApiKey;
             LogManager.Log($"[TTS] Making request to Google TTS endpoint: {url}: with content: {json}");
-            using (var resp = await httpClient.PostAsync(url, content))
+            using (var resp = await new HttpClient().PostAsync(url, content))
             {
                 resp.EnsureSuccessStatusCode();
                 string responseBody = await resp.Content.ReadAsStringAsync();
