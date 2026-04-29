@@ -1,43 +1,12 @@
-﻿using Newtonsoft.Json;
-using System.Net;
+﻿using System.Net;
 using System.Net.Http;
 using System.Text;
 
 namespace LivingStoryteller
 {
-    internal class OpenAIProvider : IAIProvider
+    internal class Player2Provider : IAIProvider
     {
         private static readonly HttpClient httpClient = new HttpClient();
-
-        public string JSONTTSRequest(string text, string personaDef, string voiceType, string emotion, string mood)
-        {
-            var json = new
-            {
-                model = ModOptions.Settings.TTSModelName,
-                voice = voiceType,
-                input = text,
-            };
-
-            string jsonString = JsonConvert.SerializeObject(json);
-            return jsonString;
-        }
-
-        public async Task<string> GetTTSResponse(string json)
-        {
-            var content = new StringContent(json, Encoding.UTF8, "application/json");
-            var url = ModOptions.Settings.TTSEndpoint;
-            httpClient.DefaultRequestHeaders.Clear();
-            httpClient.DefaultRequestHeaders.Add("Authorization", "Bearer " + ModOptions.Settings.ApiKey);
-                LogManager.Log($"[TTS] Making request to OpenAI TTS endpoint: {url}: with content: {json}");
-            using (var resp = await httpClient.PostAsync(ModOptions.Settings.Endpoint, content))
-            {
-                resp.EnsureSuccessStatusCode();
-                string responseBody = await resp.Content.ReadAsStringAsync();
-                LogManager.Log("[TTS] responseBody status code = " + resp.StatusCode);
-                
-                return responseBody;
-            }
-        }
 
         public async Task<string> GetResponse(string json)
         {
@@ -85,36 +54,70 @@ namespace LivingStoryteller
             }
         }
 
+        public async Task<string> GetTTSResponse(string json)
+        {
+            var content = new StringContent(json, Encoding.UTF8, "application/json");
+            var url = ModOptions.Settings.TTSEndpoint;
+            LogManager.Log($"[TTS] Making request to Player2 TTS endpoint: {url}: with content: {json}");
+            httpClient.DefaultRequestHeaders.Clear();
+            httpClient.DefaultRequestHeaders.Add("Authorization", "Bearer " + ModOptions.Settings.ApiKey);
+            httpClient.DefaultRequestHeaders.Add("Content-Type", "application/json");
+            using (var resp = await httpClient.PostAsync(url, content))
+            {
+                resp.EnsureSuccessStatusCode();
+                string responseBody = await resp.Content.ReadAsStringAsync();
+                LogManager.Log("[TTS] responseBody status code = " + resp.StatusCode);
+
+                return responseBody;
+            }
+        }
+
         public string JSONRequest(string model, string systemPrompt, string userMessage)
         {
-            string json =
-            "{\"model\":\"" + EscapeJson(model) + "\"," +
-            "\"messages\":[" +
-            "{\"role\":\"system\",\"content\":\"" +
-            EscapeJson(systemPrompt) + "\"}," +
-            "{\"role\":\"user\",\"content\":\"{" +
-            EscapeJson(userMessage) + "\"}" +
-            "]," +
-            "\"max_tokens\":8192," +
-            "\"temperature\":0.9}";
-
-            LogManager.Log($"Sending request json:{json}");
-
+            var json = $@"{{
+    ""messages"": [
+        {{
+            ""content"": ""{systemPrompt}"",
+            ""role"": ""system""
+        }},
+        {{
+            ""content"": ""{userMessage}"",
+            ""role"": ""user""
+        }}
+    ],
+    ""stream"": false
+}}";
             return json;
-
         }
 
-        private static string EscapeJson(string s)
+        public string JSONTTSRequest(string text, string personaDef, string voice, string emotion, string mood)
         {
-            if (string.IsNullOrEmpty(s)) return "";
-            return s
-                .Replace("\\", "\\\\")
-                .Replace("\"", "\\\"")
-                .Replace("\n", "\\n")
-                .Replace("\r", "\\r")
-                .Replace("\t", "\\t");
-        }
+            var promptBuilder = $"{StorytellerPersonaDatabase.GetPersonaText(personaDef)}.";
+            var gender = StorytellerPersonaDatabase.GetGender(personaDef);
+            if (ModOptions.Settings.UseAccent) promptBuilder += $" Your accent is {StorytellerPersonaDatabase.GetAccent(personaDef)}.";
+            if (ModOptions.Settings.UseEmotion) promptBuilder += $" Your emotional tone is {emotion}. Your mood is {mood}";
 
+            string json =
+                $@"{{
+""text"": ""{text}"",
+""voice_ids"": [
+
+    ""{voice}""
+
+],
+""speed"": 0.25,
+""audio_format"": ""mp3"",
+""voice_gender"": ""{gender}"",
+""voice_language"": ""en_US"",
+""advanced_voice"": {{
+
+    ""instructions"": ""{promptBuilder}""
+
+}},
+""disable_advanced"": true
+}}";
+            return json;
+        }
         private static string ParseContent(string json)
         {
             // Find the first "content" field in the response
@@ -189,5 +192,6 @@ namespace LivingStoryteller
             return result;
 
         }
+
     }
 }

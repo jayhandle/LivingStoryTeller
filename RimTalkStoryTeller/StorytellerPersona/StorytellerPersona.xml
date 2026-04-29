@@ -1,6 +1,5 @@
-<Defs>
-
-	<LivingStoryteller.StorytellerPersonaDef>
+<StorytellerPersonas>
+	<StorytellerPersona>
 		<defName>CassandraPersona</defName>
 		<storytellerDefName>Cassandra</storytellerDefName>
 		<personaText>
@@ -33,9 +32,9 @@
 			<somber>adopt a quiet, dignified tone with restrained empathy.</somber>
 			<confident>speak with poised authority, as though your predictions are unfolding exactly as expected.</confident>
 		</moodModifiers>
-	</LivingStoryteller.StorytellerPersonaDef>
+	</StorytellerPersona>
 
-	<LivingStoryteller.StorytellerPersonaDef>
+	<StorytellerPersona>
 		<defName>RandyPersona</defName>
 		<storytellerDefName>Randy</storytellerDefName>
 		<personaText>
@@ -68,9 +67,9 @@
 			<somber>try to be respectful, but let your natural chaotic energy leak through awkwardly.</somber>
 			<confident>speak boldly and with swagger, as if chaos is going exactly your way.</confident>
 		</moodModifiers>
-	</LivingStoryteller.StorytellerPersonaDef>
+	</StorytellerPersona>
 
-	<LivingStoryteller.StorytellerPersonaDef>
+	<StorytellerPersona>
 		<defName>PhoebePersona</defName>
 		<storytellerDefName>Phoebe</storytellerDefName>
 		<personaText>
@@ -103,9 +102,9 @@
 			<somber>speak softly, with heartfelt sympathy and emotional warmth.</somber>
 			<confident>sound encouraging and upbeat, as if proud of the colony’s progress.</confident>
 		</moodModifiers>
-	</LivingStoryteller.StorytellerPersonaDef>
+	</StorytellerPersona>
 
-	<LivingStoryteller.StorytellerPersonaDef>
+	<StorytellerPersona>
 		<defName>FallbackPersona</defName>
 		<storytellerDefName>Fallback</storytellerDefName>
 		<personaText>
@@ -136,5 +135,5 @@
 			<somber>use a quiet, respectful tone with gentle pacing.</somber>
 			<confident>speak clearly and assertively, as though events are unfolding favorably.</confident>
 		</moodModifiers>
-	</LivingStoryteller.StorytellerPersonaDef>
-</Defs>
+	</StorytellerPersona>	
+</StorytellerPersonas>

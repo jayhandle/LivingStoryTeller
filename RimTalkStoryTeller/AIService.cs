@@ -21,7 +21,6 @@ namespace LivingStoryteller
         private static float moodConfidence = 0f;    // rises with wealth, victories, growth
         private static bool isWaiting = false;
         private static float lastNarrationTime = -999f;
-        private  static HttpClient httpClient = new HttpClient();
         private static List<string> eventProcessing = new List<string>();
         // Thread-safe narration queue
         private static readonly object pendingLock = new object();
@@ -57,17 +56,6 @@ namespace LivingStoryteller
                             LogManager.Log(msg);
                         pendingLog.RemoveAt(0);
                     }
-                    //string msg = pendingLog;
-                    //string level = pendingLogLevel;
-                    //pendingLog = null;
-                    //pendingLogLevel = null;
-
-                    //if (level == "error")
-                    //    Log.Error(msg);
-                    //else if (level == "warning")
-                    //    Log.Warning(msg);
-                    //else
-                    //    LogManager.Log(msg);
                 }
             }
             
@@ -210,7 +198,7 @@ namespace LivingStoryteller
             string userMessage = $"Event:{incidentLabel} (Category:{ incidentCategory})"+ (colonyContext.NullOrEmpty() ? "" : "\n" + colonyContext);
             string emotion = string.Empty;
             string mood = string.Empty;
-            LogManager.Log($"Use Accent: {settings.UseEmotion}");
+            LogManager.Log($"Use Emotion: {settings.UseEmotion}");
             if (settings.UseEmotion)
             {
                 emotion = GetEmotion(incidentCategory, incidentLabel, PersonaDefName);
@@ -365,143 +353,9 @@ namespace LivingStoryteller
             string systemPrompt,
             string userMessage)
         {
-            endpoint = endpoint.Trim();
-            if (!endpoint.StartsWith("http"))
-            {
-                endpoint = "https://" + endpoint;
-            }
 
-            string json =
-                "{\"model\":\"" + EscapeJson(model) + "\"," +
-                "\"messages\":[" +
-                "{\"role\":\"system\",\"content\":\"" +
-                    EscapeJson(systemPrompt) + "\"}," +
-                "{\"role\":\"user\",\"content\":\"{" +
-                    EscapeJson(userMessage) + "\"}" +
-                "]," +
-                "\"max_tokens\":8192," +
-                "\"temperature\":0.9}";
-
-            QueueLog($"Sending API request to { endpoint } with api key: {apiKey}: and model:{json}");
-            var client = httpClient;
-            client.Timeout = TimeSpan.FromSeconds(30);
-            client.DefaultRequestHeaders.Clear();
-            client.DefaultRequestHeaders.Add("Authorization", "Bearer " + apiKey);
-            var content = new StringContent(json, Encoding.UTF8, "application/json");
-            try 
-            { 
-                using (var resp = client.PostAsync(endpoint, content).Result)
-                {
-                    resp.EnsureSuccessStatusCode();
-                    string responseBody = resp.Content.ReadAsStringAsync().Result;
-                    QueueLog("[LivingStoryteller] Raw API response: " + responseBody);
-                    // Debug logging via queue
-                    string preview = responseBody.Length > 500
-                        ? responseBody.Substring(0, 500) + "..."
-                        : responseBody;
-
-                    QueueLog("[LivingStoryteller] Raw API response: " + responseBody);
-
-                    return ParseContent(responseBody);
-                }                        
-            }
-            catch (WebException wex)
-            {
-                var httpResp =
-                    wex.Response as HttpWebResponse;
-                if (httpResp != null &&
-                    (int)httpResp.StatusCode == 429)
-                {
-                    QueueLog("[LivingStoryteller] Rate limited. " + "Skipping this narration.", "warning");
-                    return null;
-                }
-                throw;
-            }
-        }
-
-        private static string ParseContent(string json)
-        {
-            // Find the first "content" field in the response
-            int contentIdx = json.IndexOf("\"content\"");
-            if (contentIdx < 0) return null;
-
-            // Find the colon
-            int colonIdx = json.IndexOf(':', contentIdx + 9);
-            if (colonIdx < 0) return null;
-
-            // Find the opening quote of the value
-            int openQuote = json.IndexOf('"', colonIdx + 1);
-            if (openQuote < 0) return null;
-
-            // Walk character by character
-            var sb = new StringBuilder();
-            int i = openQuote + 1;
-            while (i < json.Length)
-            {
-                char c = json[i];
-
-                if (c == '\\' && i + 1 < json.Length)
-                {
-                    char next = json[i + 1];
-                    switch (next)
-                    {
-                        case '"': sb.Append('"'); break;
-                        case '\\': sb.Append('\\'); break;
-                        case 'n': sb.Append('\n'); break;
-                        case 'r': sb.Append('\r'); break;
-                        case 't': sb.Append('\t'); break;
-                        case '/': sb.Append('/'); break;
-                        case 'u':
-                            if (i + 5 < json.Length)
-                            {
-                                string hex = json.Substring(i + 2, 4);
-                                if (int.TryParse(hex,
-                                    System.Globalization
-                                        .NumberStyles.HexNumber,
-                                    null, out int code))
-                                {
-                                    sb.Append((char)code);
-                                    i += 6;
-                                    continue;
-                                }
-                            }
-                            sb.Append('\\');
-                            sb.Append(next);
-                            break;
-                        default:
-                            sb.Append('\\');
-                            sb.Append(next);
-                            break;
-                    }
-                    i += 2;
-                }
-                else if (c == '"')
-                {
-                    break;
-                }
-                else
-                {
-                    sb.Append(c);
-                    i++;
-                }
-            }
-
-            string result = sb.ToString().Trim();
-
-            if (result.Length == 0) return null;
-
-            return result;
-        }
-
-        private static string EscapeJson(string s)
-        {
-            if (string.IsNullOrEmpty(s)) return "";
-            return s
-                .Replace("\\", "\\\\")
-                .Replace("\"", "\\\"")
-                .Replace("\n", "\\n")
-                .Replace("\r", "\\r")
-                .Replace("\t", "\\t");
+            var request = AIProviderFactory.JSONRequest(model, systemPrompt, userMessage);
+            return AIProviderFactory.GetResponse(request).GetAwaiter().GetResult();
         }
     }
 }

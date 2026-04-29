@@ -96,8 +96,6 @@ namespace LivingStoryteller
         private static async Task<byte[]> CallTTSAPIAsync(string apiKey, string PersonaDefName, string text, string emotion, string mood)
         {
             var settings = ModOptions.Settings;
-            var provider = AIProviderFactory.CreateAIProvider();
-          
             string url = settings.TTSEndpoint;
             string voice = ResolveVoice(PersonaDefName, ModOptions.Settings.ProviderName.ToString());
             if (voice.NullOrEmpty())
@@ -108,13 +106,13 @@ namespace LivingStoryteller
 
             LogManager.Log("[TTS] Resolved voice for " + PersonaDefName + " is " + voice);
 
-            string json = provider.JSONRequest(Escape(text), PersonaDefName, voice, emotion, mood);
+            string json = AIProviderFactory.JSONTTSRequest(Escape(text), PersonaDefName, voice, emotion, mood);
 
             LogManager.Log($"[TTS] Using {ModOptions.Settings.ProviderName} TTS endpoint.");
             LogManager.Log("[TTS] URL = " + url);
             LogManager.Log("[TTS] JSON = " + json);
 
-            var responseBody = await provider.GetResponse(json);
+            var responseBody = await AIProviderFactory.GetTTSResponse(json);
             var pcmData = ExtractInlinePCM(responseBody);
             return pcmData;
         }
