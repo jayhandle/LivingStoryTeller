@@ -51,10 +51,10 @@ namespace LivingStoryteller
 
             foreach (var persona in storytellerPersonaDefs)
             {
-                Log.Message($"[LivingStoryteller] Loaded storyteller persona: {persona.storytellerDefName} | VoiceId: {persona.voiceId} | Accent: {persona.accent} | PersonaText length: {persona.personaText?.Length ?? 0}");
+                LogManager.Log($"[LivingStoryteller] Loaded storyteller persona: {persona.storytellerDefName} | VoiceId: {persona.voiceId} | Accent: {persona.accent} | PersonaText length: {persona.personaText?.Length ?? 0}");
                 ModOptions.Settings.Storytellers.Add(persona.storytellerDefName);
             }
-            Log.Message($"[LivingStoryteller] Loaded {storytellerPersonaDefs.Count} storyteller personas. Fallback persona: {fallback.storytellerDefName}");
+            LogManager.Log($"[LivingStoryteller] Loaded {storytellerPersonaDefs.Count} storyteller personas. Fallback persona: {fallback.storytellerDefName}");
         }
 
         public static void SaveToXml()
@@ -175,7 +175,7 @@ namespace LivingStoryteller
             var voice = voiceModel?.voice ?? string.Empty;
             if (string.IsNullOrEmpty(voice))
             {
-                Log.Warning($"No voice found for storyteller '{storytellerDefName}' and provider '{providerName}'. Using default voice.");
+                LogManager.Log($"No voice found for storyteller '{storytellerDefName}' and provider '{providerName}'. Using default voice.");
                 voice = GetPersonaDef(storytellerDefName)?.voiceProviders.FirstOrDefault(vm => vm.name == "default")?.voice;
             }
 

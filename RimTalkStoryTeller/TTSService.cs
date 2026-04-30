@@ -50,7 +50,7 @@ namespace LivingStoryteller
                 }
                 else
                 {
-                    Log.Warning("[TTS] Failed to create AudioClip from PCM.");
+                    LogManager.Warning("[TTS] Failed to create AudioClip from PCM.");
                 }
             }
         }
@@ -62,7 +62,7 @@ namespace LivingStoryteller
 
             if (settings.ApiKey.NullOrEmpty())
             {
-                Log.Warning("[LivingStoryteller][TTS] No API key for TTS.");
+                LogManager.Warning("[LivingStoryteller][TTS] No API key for TTS.");
                 return;
             }
 
@@ -82,12 +82,12 @@ namespace LivingStoryteller
                     }
                     else
                     {
-                        Log.Warning("[LivingStoryteller][TTS] PCM data was null or empty.");
+                        LogManager.Warning("[LivingStoryteller][TTS] PCM data was null or empty.");
                     }
                 }
                 catch (Exception ex)
                 {
-                    Log.Error("[LivingStoryteller] TTS failed: " + ex);
+                    LogManager.Error("[LivingStoryteller] TTS failed: " + ex);
                 }
 
                 ProcessingAudio = false;
@@ -100,7 +100,7 @@ namespace LivingStoryteller
             string voice = ResolveVoice(PersonaDefName, ModOptions.Settings.ProviderName.ToString());
             if (voice.NullOrEmpty())
             {
-                Log.Warning("[TTS] No voice mapping found for PersonaDefName: " + PersonaDefName + " with provider: " + ModOptions.Settings.ProviderName);
+                LogManager.Warning("[TTS] No voice mapping found for PersonaDefName: " + PersonaDefName + " with provider: " + ModOptions.Settings.ProviderName);
                 voice = ResolveVoice("FallbackPersona", ModOptions.Settings.ProviderName.ToString()); // default fallback
             }
 
@@ -180,14 +180,14 @@ namespace LivingStoryteller
         {
             if (clip == null)
             {
-                Log.Warning("[LivingStoryteller][TTS] PlayClip called with null clip.");
+                LogManager.Warning("[LivingStoryteller][TTS] PlayClip called with null clip.");
                 return;
             }
 
             Camera cam = Find.Camera;
             if (cam == null)
             {
-                Log.Warning("[LivingStoryteller][TTS] No camera found for audio playback.");
+                LogManager.Warning("[LivingStoryteller][TTS] No camera found for audio playback.");
                 return;
             }
 

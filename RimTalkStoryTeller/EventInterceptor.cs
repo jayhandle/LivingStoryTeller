@@ -12,7 +12,8 @@ namespace LivingStoryteller
             bool __result)
         {
             if (!__result) return;
-
+            LogManager.Log($"Incident triggered: defName: {__instance.def.defName}: label:{__instance.def.label}: cat: {__instance.def.category.ToString()} incident: {__instance.ToStringSafe()}");
+            
             var incident = __instance.def;
             var storyteller = Find.Storyteller?.def;
             string defName = storyteller?.defName ?? "";

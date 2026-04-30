@@ -21,7 +21,7 @@ namespace LivingStoryteller
 
                 if (target == null)
                 {
-                    Log.Error(
+                    LogManager.Log(
                         "[LivingStoryTeller] Could not find TryExecute!");
                     return;
                 }
@@ -32,17 +32,17 @@ namespace LivingStoryteller
 
                 harmony.Patch(target, postfix: new HarmonyMethod(postfix));
 
-                Log.Message(
+                LogManager.Log(
                     "[LivingStoryTeller] Successfully patched: "
                     + target.Name);
             }
             catch (Exception ex)
             {
-                Log.Error(
+                LogManager.Error(
                     "[LivingStoryTeller] Patching failed: " + ex);
             }
 
-            Log.Message("[LivingStoryTeller] Loaded successfully.");
+            LogManager.Log("[LivingStoryTeller] Loaded successfully.");
         }
     }
 }

@@ -35,6 +35,10 @@ namespace LivingStoryteller
         public bool DebugLogging = false;
         public bool UseAccent = true;
         public bool UseEmotion = true;
+        public float Stress = 0f;        // rises with disasters, starvation, injuries
+        public float Chaos = 0f;         // rises with raids, threats, explosions
+        public float Sympathy = 0f;      // rises with pawn deaths, mental breaks
+        public float Confidence = 0f;    // rises with wealth, victories, growth
         //public Dictionary<string, StorytellerPersonaDef> StorytellerPersonas = new Dictionary<string, StorytellerPersonaDef>();
 
         public override void ExposeData()
@@ -59,6 +63,11 @@ namespace LivingStoryteller
             Scribe_Values.Look(ref DebugLogging, "DebugLogging", true);
             Scribe_Values.Look(ref UseAccent, "UseAccent", true);
             Scribe_Values.Look(ref UseEmotion, "UseEmotion", true);
+            Scribe_Values.Look(ref Stress, "Stress", 0f);
+            Scribe_Values.Look(ref Chaos, "Chaos", 0f);
+            Scribe_Values.Look(ref Sympathy, "Sympathy", 0f);
+            Scribe_Values.Look(ref Confidence, "Confidence", 0f);
+
             //Scribe_Collections.Look(ref Storytellers, "Storytellers", LookMode.Value);
             //Scribe_Collections.Look(ref StorytellerPersonas, "StorytellerPersonas", LookMode.Value, LookMode.Deep);
             //LoadStorytellerDefaults();

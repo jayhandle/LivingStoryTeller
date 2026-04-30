@@ -359,6 +359,7 @@ namespace LivingStoryteller
         static LivingStorytellerStartup()
         {
             var harmony = new Harmony("JayHandle.LivingStoryteller");
+            LogManager.Init();
 
             try
             {

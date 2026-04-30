@@ -15,10 +15,6 @@ namespace LivingStoryteller
     [StaticConstructorOnStartup]
     public static class StorytellerAIService
     {
-        private static float moodStress = 0f;        // rises with disasters, starvation, injuries
-        private static float moodChaos = 0f;         // rises with raids, threats, explosions
-        private static float moodSympathy = 0f;      // rises with pawn deaths, mental breaks
-        private static float moodConfidence = 0f;    // rises with wealth, victories, growth
         private static bool isWaiting = false;
         private static float lastNarrationTime = -999f;
         private static List<string> eventProcessing = new List<string>();
@@ -49,9 +45,9 @@ namespace LivingStoryteller
                         string msg = split[0];
                         string level = split[1];
                         if (level == "error")
-                            Log.Error(msg);
+                            LogManager.Error(msg);
                         else if (level == "warning")
-                            Log.Warning(msg);
+                            LogManager.Warning(msg);
                         else
                             LogManager.Log(msg);
                         pendingLog.RemoveAt(0);
@@ -128,13 +124,13 @@ namespace LivingStoryteller
 
         private static void DecayMood()
         {
-            LogManager.Log($"Decaying mood. Before decay - Stress: {moodStress}, Chaos: {moodChaos}, Sympathy: {moodSympathy}, Confidence: {moodConfidence}");
+            LogManager.Log($"Decaying mood. Before decay - Stress: {ModOptions.Settings.Stress}, Chaos: {ModOptions.Settings.Chaos}, Sympathy: {ModOptions.Settings.Sympathy}, Confidence: {ModOptions.Settings.Confidence}");
             float decay = 0.001f; // slow decay per frame
 
-            moodStress = Mathf.Max(0f, moodStress - decay);
-            moodChaos = Mathf.Max(0f, moodChaos - decay);
-            moodSympathy = Mathf.Max(0f, moodSympathy - decay);
-            moodConfidence = Mathf.Max(0f, moodConfidence - decay);
+            ModOptions.Settings.Stress = Mathf.Max(0f, ModOptions.Settings.Stress - decay);
+            ModOptions.Settings.Chaos = Mathf.Max(0f, ModOptions.Settings.Chaos - decay);
+            ModOptions.Settings.Sympathy = Mathf.Max(0f, ModOptions.Settings.Sympathy - decay);
+            ModOptions.Settings.Confidence = Mathf.Max(0f, ModOptions.Settings.Confidence - decay);
         }
 
         private static void QueueLog(string message, string level = "message")
@@ -167,7 +163,7 @@ namespace LivingStoryteller
 
             if (settings.ApiKey.NullOrEmpty())
             {
-                Log.Warning( "[LivingStoryteller] No API key configured. " + "Go to Mod Settings > The Living Storyteller.");
+                LogManager.Warning( "[LivingStoryteller] No API key configured. " + "Go to Mod Settings > The Living Storyteller.");
                 eventProcessing.Remove(eventKey);
                 return;
             }
@@ -275,34 +271,34 @@ namespace LivingStoryteller
             // Pawn death → sympathy + stress
             if (label.Contains("Died") || category == "PawnDeath")
             {
-                moodSympathy += 0.4f;
-                moodStress += 0.2f;
+                ModOptions.Settings.Sympathy += 0.4f;
+                ModOptions.Settings.Stress += 0.2f;
             }
 
             // Big threats → chaos + stress
             if (category == "ThreatBig")
             {
-                moodChaos += 0.5f;
-                moodStress += 0.3f;
+                ModOptions.Settings.Chaos += 0.5f;
+                ModOptions.Settings.Stress += 0.3f;
             }
 
             // Small threats → chaos
             if (category == "ThreatSmall" || category == "MajorThreat")
             {
-                moodChaos += 0.3f;
+                ModOptions.Settings.Chaos += 0.3f;
             }
 
             // Positive events → confidence
             if (label.Contains("Inspired") || label.Contains("Marriage") || label.Contains("Birth"))
             {
-                moodConfidence += 0.4f;
+                ModOptions.Settings.Confidence += 0.4f;
             }
 
             // Clamp values
-            moodStress = Mathf.Clamp(moodStress, 0f, 5f);
-            moodChaos = Mathf.Clamp(moodChaos, 0f, 5f);
-            moodSympathy = Mathf.Clamp(moodSympathy, 0f, 5f);
-            moodConfidence = Mathf.Clamp(moodConfidence, 0f, 5f);
+            ModOptions.Settings.Stress = Mathf.Clamp(ModOptions.Settings.Stress, 0f, 5f);
+            ModOptions.Settings.Chaos = Mathf.Clamp(ModOptions.Settings.Chaos, 0f, 5f);
+            ModOptions.Settings.Sympathy = Mathf.Clamp(ModOptions.Settings.Sympathy, 0f, 5f);
+            ModOptions.Settings.Confidence = Mathf.Clamp(ModOptions.Settings.Confidence, 0f, 5f);
         }
         private static string GetEmotion(string incidentCategory, string incidentLabel, string personaDef)
         {
@@ -322,12 +318,12 @@ namespace LivingStoryteller
 
         private static string GetMoodDescriptor(string personaDef)
         {
-            LogManager.Log($"Determining mood descriptor for personaDef: {personaDef}. Current mood values - Stress: {moodStress}, Chaos: {moodChaos}, Sympathy: {moodSympathy}, Confidence: {moodConfidence}");
+            LogManager.Log($"Determining mood descriptor for personaDef: {personaDef}. Current mood values - Stress: {ModOptions.Settings.Stress}, Chaos: {ModOptions.Settings.Chaos}, Sympathy: {ModOptions.Settings.Sympathy}, Confidence: {ModOptions.Settings.Confidence}");
             var mood = "neutral";
-            if (moodStress > 3f) mood = "anxious";
-            if (moodChaos > 3f) mood = "chaotic";
-            if (moodSympathy > 3f) mood = "somber";
-            if (moodConfidence > 3f) mood = "confident";
+            if (ModOptions.Settings.Stress > 3f) mood = "anxious";
+            if (ModOptions.Settings.Chaos > 3f) mood = "chaotic";
+            if (ModOptions.Settings.Sympathy > 3f) mood = "somber";
+            if (ModOptions.Settings.Confidence > 3f) mood = "confident";
 
             return StorytellerPersonaDatabase.GetMood(personaDef, mood);
         }

@@ -55,7 +55,7 @@ namespace LivingStoryteller
             Scribe_Collections.Look(ref voiceProviders, "voiceProviders", LookMode.Deep);
             Scribe_Deep.Look(ref emotionModifiers, "emotionModifiers");
             Scribe_Deep.Look(ref moodModifiers, "moodModifiers");
-            Log.Message($"[LivingStoryteller] Loaded StorytellerPersonaDef: {storytellerDefName} | VoiceId: {voiceId} | Accent: {accent} | PersonaText length: {personaText?.Length ?? 0}");
+            LogManager.Log($"[LivingStoryteller] Loaded StorytellerPersonaDef: {storytellerDefName} | VoiceId: {voiceId} | Accent: {accent} | PersonaText length: {personaText?.Length ?? 0}");
         }
     }
 

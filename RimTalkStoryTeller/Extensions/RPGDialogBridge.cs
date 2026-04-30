@@ -1,4 +1,5 @@
-﻿using RimWorld;
+﻿using LivingStoryteller;
+using RimWorld;
 using Verse;
 
 namespace Extension.LivingStoryTeller
@@ -19,8 +20,8 @@ namespace Extension.LivingStoryTeller
 
                     if (_isAvailable.Value)
                     {
-                        Log.Message(
-                            "[LivingStoryteller] RPG Dialog " +
+                        LogManager.Log(
+                            "RPG Dialog " +
                             "detected. Narrations will use " +
                             "RPG dialog window.");
                     }
