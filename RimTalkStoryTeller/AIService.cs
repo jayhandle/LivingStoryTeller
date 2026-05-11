@@ -1,5 +1,6 @@
 ﻿using Extension.LivingStoryTeller;
 using Google.GenAI.Types;
+using LivingStoryTeller;
 using RimWorld;
 using System;
 using System.IO;
@@ -221,6 +222,8 @@ namespace LivingStoryteller
                 userMessage += $",\nAccent:{accent}";
             }
 
+            userMessage += GetMemories();
+
             string name = storytellerName;
             string endpoint = settings.Endpoint;
             string apiKey = settings.ApiKey.Trim();
@@ -263,6 +266,29 @@ namespace LivingStoryteller
                 isWaiting = false;
                 eventProcessing.Remove(eventKey);
             });
+        }
+
+        private static string GetMemories()
+        {
+            var memories = string.Empty;
+            if (LivingStorytellerTicksComponent.MemoryManager.ShortTerm.Any())
+            {
+                memories = $"Recent Memory:\n";
+                foreach (var mem in LivingStorytellerTicksComponent.MemoryManager.ShortTerm)
+                {
+                    memories += $"- {mem.Type}|{mem.Description}\n";
+                }
+            }
+
+            if (LivingStorytellerTicksComponent.MemoryManager.LongTerm.Any())
+            {
+                memories += $"Long-Term Memory:\n";
+                foreach (var mem in LivingStorytellerTicksComponent.MemoryManager.LongTerm)
+                {
+                    memories += $"- {mem.Type}|{mem.Description}\n";
+                }
+            }
+            return memories;
         }
 
         private static void UpdateMood(string category, string label)

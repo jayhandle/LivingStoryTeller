@@ -1,4 +1,5 @@
 ﻿using HarmonyLib;
+using LivingStoryTeller;
 using RimWorld;
 using RimWorld.BaseGen;
 using System.Reflection;
@@ -12,56 +13,38 @@ namespace LivingStoryteller
         public static void Postfix( IncidentWorker __instance, IncidentParms parms, bool __result)
         {
             if (!__result) return;
-            LogManager.Log($"Incident triggered: defName: {__instance.def.defName}: label:{__instance.def.label}: cat: {__instance.def.category.ToString()} incident: {__instance.ToStringSafe()}");
+            LogManager.Log($"[Patch_IncidentWorker]: defName: {__instance.def.defName}: label:{__instance.def.label}: cat: {__instance.def.category.ToString()} incident: {__instance.ToStringSafe()} description: {__instance.def.description}");
             var incident = __instance.def;
             // Make the event name human-readable
-            string eventName = incident.label;
-            if (eventName.NullOrEmpty())
+            string label = incident.label;
+            if (label.NullOrEmpty())
             {
-                eventName = incident.defName;
+                label = incident.defName;
             }
-            eventName = FormatEventName(eventName);
+
+            var eventName = $@"{{";
+            eventName += $@"""event"": ""{incident.defName}"",";
+            eventName += $@"""category"": ""{incident.category.ToString()}"",";
+            if (__instance.ToStringSafe() == "RimWorld.IncidentWorker_RaidEnemy")
+            {
+                Faction faction = parms.faction;
+                eventName += $@"""raidingFaction"": ""{faction?.Name}"",";
+                eventName += $@"""raidStrength"": ""{parms.points}"",";
+                label += $" from {faction?.Name}";
+
+            }
+
+            eventName += $@"""description"": ""{label}""";
+            eventName + = $@"}}";
+
+            LivingStorytellerTicksComponent.MemoryManager.AddMemory(new MemoryRecord()
+            {
+                Type = incident.defName,
+                Description = $"{label} ({incident.category.ToString()})",
+                IsSignificant = true
+            });
 
             RequestNarration.Request(eventName, incident.category.ToString());
-
-            
-            //var personaDef = StorytellerPersonaDatabase.GetPersonaDef(defName);
-            //string persona = personaDef.personaText;
-            //string voiceId = personaDef.voiceId;
-
-            //string colonyContext = "";
-            //var map = Find.CurrentMap;
-            //if (map != null)
-            //{
-            //    int colonists = map.mapPawns.FreeColonistsCount;
-            //    float wealth = map.wealthWatcher.WealthTotal;
-            //    int day = GenDate.DaysPassed;
-            //    colonyContext =
-            //        $"Colony:{colonists} colonists," +
-            //        $"\nWealth:{wealth.ToString("F0")} wealth," +
-            //        $"\nday:{day}";
-            //}
-
-            //StorytellerAIService.RequestNarration(eventName, incident.category.ToString(), persona, colonyContext, storyteller?.label ?? "Storyteller", defName);
-        }
-
-        private static string FormatEventName(string name)
-        {
-            // Split camelCase/PascalCase into words
-            // "AllyAssistance" -> "Ally Assistance"
-            // "enemy raid" stays as "enemy raid"
-            string spaced = Regex.Replace(name,
-                "(?<=[a-z])(?=[A-Z])", " ");
-            spaced = Regex.Replace(spaced,
-                "(?<=[A-Z])(?=[A-Z][a-z])", " ");
-
-            // Capitalize first letter
-            if (spaced.Length > 0)
-            {
-                spaced = char.ToUpper(spaced[0]) + spaced.Substring(1);
-            }
-
-            return spaced;
         }
     }
 
@@ -72,6 +55,7 @@ namespace LivingStoryteller
             return; // blocking it now until i know what to do with it, too spammy for now
 
             LogManager.Log($"[Patch_TaleRecorder_RecordTale]Tale recorded: {def.defName} | {def.label} | {def.description}: with args: {string.Join(", ", args.Select(a => a?.ToString() ?? "null"))}");
+
             //EventManager.Dispatch("TaleRecorded", new
             //{
             //    tale = def.defName,
@@ -115,37 +99,24 @@ namespace LivingStoryteller
                 return;
             }
 
-            LogManager.Log($"[Patch_Pawn_Kill] Pawn killed: {pawnName} | Cause: {cause}");
-            RequestNarration.Request(pawnName + " Died", "PawnDeath");
+            LogManager.Log($"[Patch_Pawn_Kill] Pawn killed: {pawnName}|{pawn.gender} | Cause: {cause}");
+            var eventName = $@"
+{{
+    ""event"": ""PawnDeath"",
+    ""pawnName"": ""{pawnName}"",
+    ""pawnGender"": ""{pawn.gender}"",
+    ""causeOfDeath"": ""{cause}""
+    }}";
+            var memory = new MemoryRecord()
+            {
+                Type = "PawnDeath",
+                Description = eventName,
+                IsSignificant = true
+            };
+
+            LivingStorytellerTicksComponent.MemoryManager.AddMemory(memory);
+            RequestNarration.Request(eventName, "PawnDeath");
         }
-
-        //private static void RequestNarration(string pawnName)
-        //{
-        //    var storyteller = Find.Storyteller?.def;
-        //    string defName = storyteller?.defName ?? "";
-
-        //    // Make the event name human-readable
-        //    string eventName = $"{pawnName} Died";
-
-        //    var personaDef = StorytellerPersonaDatabase.GetPersonaDef(defName);
-        //    string persona = personaDef.personaText;
-        //    string voiceId = personaDef.voiceId;
-
-        //    string colonyContext = "";
-        //    var map = Find.CurrentMap;
-        //    if (map != null)
-        //    {
-        //        int colonists = map.mapPawns.FreeColonistsCount;
-        //        float wealth = map.wealthWatcher.WealthTotal;
-        //        int day = GenDate.DaysPassed;
-        //        colonyContext =
-        //            $"Colony:{colonists} colonists," +
-        //            $"\nWealth:{wealth.ToString("F0")} wealth," +
-        //            $"\nday:{day}";
-        //    }
-
-        //    StorytellerAIService.RequestNarration(eventName, "PawnDeath", persona, colonyContext, storyteller?.label ?? "Storyteller", defName);
-        //}
     }
 
     public static class Patch_Pawn_Downed
