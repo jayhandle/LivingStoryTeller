@@ -192,7 +192,7 @@ namespace LivingStoryteller
 
 
             string systemPrompt = persona + settings.PersonaText;
-            string userMessage = $"Event:{incidentLabel} (Category:{ incidentCategory})"+ (colonyContext.NullOrEmpty() ? "" : "\n" + colonyContext);
+            string userMessage = $"Event:{incidentLabel}"+ (colonyContext.NullOrEmpty() ? "" : ",\n" + colonyContext);
             string emotion = string.Empty;
             string mood = string.Empty;
             LogManager.Log($"Use Emotion: {settings.UseEmotion}");
@@ -204,13 +204,13 @@ namespace LivingStoryteller
                 LogManager.Log($"mood: {mood}");
                 UpdateMood(incidentCategory, incidentLabel);
 
-                systemPrompt += $"\nCurrent emotional tone:{emotion}.";
-                systemPrompt += $"\nCurrent storyteller mood:{mood}.";
+                systemPrompt += $@"\nCurrent emotional tone:""{emotion}"".";
+                systemPrompt += $@"\nCurrent storyteller mood:""{mood}"".";
 
                 systemPrompt += "\nAdjust your narration style to reflect both the immediate emotion and the long-term mood.";
 
-                userMessage += $",\nEmotional tone:{emotion}";
-                userMessage += $"\nmood:{mood}.";
+                userMessage += $@",\nEmotional tone:""{emotion}""";
+                userMessage += $@"\nmood:""{mood}""";
 
             }
             LogManager.Log($"Use Accent: {settings.UseAccent}");
@@ -218,10 +218,12 @@ namespace LivingStoryteller
             {
                 var accent = StorytellerPersonaDatabase.GetAccent(PersonaDefName);
                 LogManager.Log($"accent: {accent}");
-                systemPrompt += $"\nUse Accent:{accent}.";
-                userMessage += $",\nAccent:{accent}";
+                systemPrompt += $@"\nUse Accent:""{accent}""";
+                userMessage += $@",\nAccent:""{accent}""";
             }
 
+
+            systemPrompt += "\n Keep in mind of past events in the Memory, if there are any.";
             userMessage += GetMemories();
 
             string name = storytellerName;
@@ -274,9 +276,10 @@ namespace LivingStoryteller
             if (LivingStorytellerTicksComponent.MemoryManager.ShortTerm.Any())
             {
                 memories = $"Recent Memory:\n";
-                foreach (var mem in LivingStorytellerTicksComponent.MemoryManager.ShortTerm)
+                for (int i = 0; i < LivingStorytellerTicksComponent.MemoryManager.ShortTerm.Count; i++)
                 {
-                    memories += $"- {mem.Type}|{mem.Description}\n";
+                    MemoryRecord? mem = LivingStorytellerTicksComponent.MemoryManager.ShortTerm[i];
+                    memories += $"-{mem.Type}|{mem.Description}\n";
                 }
             }
 
