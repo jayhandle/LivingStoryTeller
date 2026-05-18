@@ -10,6 +10,7 @@ namespace LivingStoryteller
             google,
             open_ai,
             player2,
+            novel_ai,
             custom
         }
 
@@ -39,7 +40,6 @@ namespace LivingStoryteller
         public float Chaos = 0f;         // rises with raids, threats, explosions
         public float Sympathy = 0f;      // rises with pawn deaths, mental breaks
         public float Confidence = 0f;    // rises with wealth, victories, growth
-        //public Dictionary<string, StorytellerPersonaDef> StorytellerPersonas = new Dictionary<string, StorytellerPersonaDef>();
 
         public override void ExposeData()
         {
@@ -68,85 +68,7 @@ namespace LivingStoryteller
             Scribe_Values.Look(ref Sympathy, "Sympathy", 0f);
             Scribe_Values.Look(ref Confidence, "Confidence", 0f);
 
-            //Scribe_Collections.Look(ref Storytellers, "Storytellers", LookMode.Value);
-            //Scribe_Collections.Look(ref StorytellerPersonas, "StorytellerPersonas", LookMode.Value, LookMode.Deep);
-            //LoadStorytellerDefaults();
-
             base.ExposeData();
         }
-
-   //     private Dictionary<string, StorytellerPersonaDef> LoadStorytellerDefaults()
-   //     {
-   //         StorytellerPersonaDef FallbackPersona = new StorytellerPersonaDef
-   //         {
-   //             storytellerDefName = "Fallback",
-   //             personaText = @"You are the storyteller guiding this colony. Comment on what just happened.",
-   //             voiceId = "default_voice",
-   //             gender = "other",
-   //             voiceProviders = new List<VoiceProvider>
-   //             {
-   //                 new VoiceProvider { name = "google", voice = "Zephyr" },
-   //                 new VoiceProvider { name = "open_ai", voice = "nova" },
-   //             },
-   //             emotionModifiers = new EmotionModifier
-   //             {
-   //                 neutral = "Speak normally.",
-   //                 tense = "Speak with urgency and seriousness.",
-   //                 chaotic = "Speak with excitement and unpredictability.",
-   //                 somber = "Speak softly and with sympathy."
-   //             },
-   //             moodModifiers = new MoodModifier
-   //             {
-   //                 neutral = "maintain a balanced, informative tone.",
-   //                 anxious = "speak with urgency and heightened awareness.",
-   //                 chaotic = "adopt a lively, unpredictable tone with bursts of energy.",
-   //                 somber = "use a quiet, respectful tone with gentle pacing.",
-   //                 confident = "speak clearly and assertively, as though events are unfolding favorably."
-   //             }
-   //         };
-   //         StorytellerPersonaDef CassandraPersona = new StorytellerPersonaDef
-   //         {
-   //             storytellerDefName = "Cassandra",
-   //             personaText = @"You are Cassandra Classic. Calculating, methodical, dramatic.
-			//You planned this event deliberately. Address the colony directly.
-			//When speaking, use a royal british accent.",
-   //             voiceId = "cassandra_voice",
-   //             accent = "royal british english",
-   //             gender = "female",
-   //             voiceProviders = new List<VoiceProvider>
-   //             {
-   //                 new VoiceProvider { name = "google", voice = "Zephyr" },
-   //                 new VoiceProvider { name = "open_ai", voice = "nova" },
-   //             },
-   //             emotionModifiers = new EmotionModifier
-   //             {
-   //                 neutral = "calm, precise",
-   //                 tense = "clipped, serious",
-   //                 chaotic = "focused, serious",
-   //                 somber = "quiet, reflective"
-   //             },
-   //             moodModifiers = new MoodModifier
-   //             {
-   //                 neutral = "maintain a composed, articulate, and analytical tone.",
-   //                 anxious = "speak with sharpened precision, as if calculating risks under pressure.",
-   //                 chaotic = "maintain composure but let subtle irritation or disbelief slip through.",
-   //                 somber = "adopt a quiet, dignified tone with restrained empathy.",
-   //                 confident = "speak with poised authority, as though your predictions are unfolding exactly as expected."
-   //             }
-   //         };
-
-   //         StorytellerPersonas = StorytellerPersonas ?? new Dictionary<string, StorytellerPersonaDef>();
-   //         if (!StorytellerPersonas.ContainsKey("Cassandra"))
-   //         {  
-   //             StorytellerPersonas.Add("Cassandra", CassandraPersona);
-   //             Storytellers.Add("Cassandra"); 
-   //         }
-   //         if (!StorytellerPersonas.ContainsKey("Fallback"))
-   //         {
-   //             StorytellerPersonas.Add("Fallback", FallbackPersona);
-   //             Storytellers.Add("Fallback");
-   //         }
-   //         return StorytellerPersonas;
-   //     }
     }
 }

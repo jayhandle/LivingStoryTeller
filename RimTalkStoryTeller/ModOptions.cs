@@ -328,6 +328,12 @@ namespace LivingStoryteller
                     Settings.TTSEndpoint = "https://api.player2.game/v1/tts/speak";
                     Settings.ModelName = "player2";
                     break;
+                    case StorytellerSettings.AIProvider.novel_ai:
+                        Settings.Endpoint = "https://api.novelai.net/ai/generate/text";
+                        Settings.TTSModelName = "kayra-v1";
+                        Settings.TTSEndpoint = "https://api.novelai.net/ai/generate/voice";
+                        Settings.ModelName = "novel_ai";
+                        break;
                 default:
                     Settings.Endpoint = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions";
                     Settings.TTSModelName = "gemini-2.5-flash-preview-tts";
@@ -347,6 +353,8 @@ namespace LivingStoryteller
                     return "Custom";
                     case StorytellerSettings.AIProvider.player2:
                         return "Player2";
+                    case StorytellerSettings.AIProvider.novel_ai:
+                        return "NovelAI";
                 default:
                     return "Google AI Studio";
             }
