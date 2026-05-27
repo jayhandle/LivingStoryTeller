@@ -17,6 +17,7 @@ namespace LivingStoryteller
         public List<string> Storytellers = new List<string>();
         public string ApiKey = "";
         public string TTSApiKey = "";
+        public bool GameLoaded = false;
 
         public AIProvider ProviderName = AIProvider.google;
         public AIProvider TTSProviderName = AIProvider.google;
@@ -26,10 +27,9 @@ namespace LivingStoryteller
         public string TTSModelName = "gemini-2.5-flash-tts";
         public string TTSEndpoint = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=";
         public string PersonaText = "The player is running a colony and you are the storyteller controlling events. " +
-            "An event just occurred. Respond in character in 2-4 sentences. Be dramatic. Address the player directly. " +
+            "An event just occurred. Respond in character in 2-4 sentences. Address the player directly. " +
             "Do not use quotation marks around your response. Keep the narration concise, ideally under 100 words. " +
-            "Use a tone that fits the event. If it's a minor event, be brief and lighthearted. " +
-            "If it's a major crisis, be more serious and dramatic. Always relate it back to the colony's situation when possible. " +
+            "Always relate it back to the colony's situation when possible. " +
             "Keep the reading on a third grade level. When talking to the player, do not refer to the player as 'Player' or 'Player Name'.";
         public float displayDuration = 15f;
         public float cooldownSeconds = 60f;

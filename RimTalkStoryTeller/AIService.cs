@@ -382,5 +382,46 @@ namespace LivingStoryteller
             var request = AIProviderFactory.JSONRequest(model, systemPrompt, userMessage);
             return AIProviderFactory.GetResponse(request).GetAwaiter().GetResult();
         }
+
+        internal static void GreetPlayer(Map map)
+        {
+            var mem = LivingStorytellerTicksComponent.MemoryManager;
+
+            string recent = string.Join("; ",
+                mem.LongTerm.Select(m => m.Description));
+
+            string arcs = string.Join("; ",
+                mem.ActiveArcs.Select(a => a.Name));
+
+            var storyteller = Find.Storyteller?.def;
+            string defName = storyteller?.defName ?? "";
+
+            var personaDef = StorytellerPersonaDatabase.GetPersonaDef(defName);
+            string persona = personaDef.storytellerDefName;
+
+            string prompt = $@"
+You are {personaDef}, the Living Storyteller.
+The player has just loaded back into their RimWorld colony.
+Give them an in-character greeting.
+Summarize recent events/memories.
+Comment on the colony's current situation.
+Suggest what they might want to do next, if you can think of anything.
+Do not break character. 
+";
+            string colonyContext = "";
+            if (map != null)
+            {
+                int colonists = map.mapPawns.FreeColonistsCount;
+                float wealth = map.wealthWatcher.WealthTotal;
+                int day = GenDate.DaysPassed;
+                colonyContext =
+                    $"Colony:{colonists} colonists," +
+                    $"\nWealth:{wealth.ToString("F0")} wealth," +
+                    $"\nday:{day}";
+            }
+
+            RequestNarration("Welcome Back","Greeting", prompt, colonyContext, personaDef.storytellerDefName, defName);
+        }
+    
     }
 }

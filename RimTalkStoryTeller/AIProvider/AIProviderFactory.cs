@@ -39,6 +39,8 @@ namespace LivingStoryteller
                     return new GoogleProvider();
                 case StorytellerSettings.AIProvider.custom:
                     return new CustomProvider();
+                case StorytellerSettings.AIProvider.novel_ai:
+                    return new NovelAIProvider();
                 default:
                     throw new NotImplementedException($"AI Provider {provider} not implemented");
             }

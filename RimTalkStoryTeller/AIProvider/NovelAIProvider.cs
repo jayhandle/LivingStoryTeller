@@ -9,18 +9,22 @@ using System.Threading.Tasks;
 
 namespace LivingStoryteller
 {
+    //https://api.novelai.net/docs/#/%2Fai%2F/AIController_aiGenerate
     internal class NovelAIProvider : IAIProvider
     {
         private static readonly HttpClient httpClient = new HttpClient();
 
         public string JSONTTSRequest(string text, string personaDef, string voiceType, string emotion, string mood)
         {
-            var json = new
-            {
-                model = ModOptions.Settings.TTSModelName,
-                voice = voiceType,
-                input = text,
-            };
+            var json = $@"
+{{
+  ""text"": ""{text}"",
+  ""seed"": ""string"",
+  ""voice"": 0,
+  ""opus"": true,
+  ""version"": ""v1""
+}}
+";
 
             string jsonString = JsonConvert.SerializeObject(json);
             return jsonString;
@@ -32,7 +36,7 @@ namespace LivingStoryteller
             var url = ModOptions.Settings.TTSEndpoint;
             httpClient.DefaultRequestHeaders.Clear();
             httpClient.DefaultRequestHeaders.Add("Authorization", "Bearer " + ModOptions.Settings.ApiKey);
-            LogManager.Log($"[TTS] Making request to custom TTS endpoint: {url}: with content: {json}");
+            LogManager.Log($"[TTS] Making request to NovelAI TTS endpoint: {url}: with content: {json}");
             using (var resp = await httpClient.PostAsync(ModOptions.Settings.Endpoint, content))
             {
                 resp.EnsureSuccessStatusCode();
@@ -84,18 +88,17 @@ namespace LivingStoryteller
 
         public string JSONRequest(string model, string systemPrompt, string userMessage)
         {
-            string json =
-            "{\"model\":\"" + EscapeJson(model) + "\"," +
-            "\"messages\":[" +
-            "{\"role\":\"system\",\"content\":\"" +
-            EscapeJson(systemPrompt) + "\"}," +
-            "{\"role\":\"user\",\"content\":\"{" +
-            EscapeJson(userMessage) + "\"}" +
-            "]," +
-            "\"max_tokens\":8192," +
-            "\"temperature\":0.9},"+
-            "\"repetition_penalty\": 1.1";
-
+            string json = $@"
+{{
+""input"": ""{userMessage}"",
+  ""model"": ""{model}"",
+  ""parameters"": {{
+    ""use_string"": true,
+    ""temperature"": 1,
+    ""min_length"": 10,
+    ""max_length"": 30
+}}
+";
             LogManager.Log($"Sending request json:{json}");
 
             return json;

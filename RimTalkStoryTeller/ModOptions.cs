@@ -329,8 +329,8 @@ namespace LivingStoryteller
                     Settings.ModelName = "player2";
                     break;
                     case StorytellerSettings.AIProvider.novel_ai:
-                        Settings.Endpoint = "https://api.novelai.net/ai/generate/text";
-                        Settings.TTSModelName = "kayra-v1";
+                        Settings.Endpoint = "https://api.novelai.net/ai/generate";
+                        Settings.TTSModelName = "euterpe-v2";
                         Settings.TTSEndpoint = "https://api.novelai.net/ai/generate/voice";
                         Settings.ModelName = "novel_ai";
                         break;
