@@ -16,7 +16,15 @@
 			</li>
 			<li>
 				<name>open_ai</name>
-				<voice>nova</voice>
+				<voice>alloy</voice>
+			</li>
+			<li>
+				<name>player2</name>
+				<voice></voice>
+			</li>
+			<li>
+				<name>novel_ai</name>
+				<voice></voice>
 			</li>
 		</voiceProviders>
 		<emotionModifiers>
@@ -33,7 +41,6 @@
 			<confident>speak with poised authority, as though your predictions are unfolding exactly as expected.</confident>
 		</moodModifiers>
 	</StorytellerPersona>
-
 	<StorytellerPersona>
 		<defName>RandyPersona</defName>
 		<storytellerDefName>Randy</storytellerDefName>
@@ -47,11 +54,19 @@
 		<voiceProviders>
 			<li>
 				<name>google</name>
-				<voice>Iapetus</voice>
+				<voice>Zephyr</voice>
 			</li>
 			<li>
 				<name>open_ai</name>
-				<voice>verse</voice>
+				<voice>alloy</voice>
+			</li>
+			<li>
+				<name>player2</name>
+				<voice></voice>
+			</li>
+			<li>
+				<name>novel_ai</name>
+				<voice></voice>
 			</li>
 		</voiceProviders>
 		<emotionModifiers>
@@ -68,7 +83,6 @@
 			<confident>speak boldly and with swagger, as if chaos is going exactly your way.</confident>
 		</moodModifiers>
 	</StorytellerPersona>
-
 	<StorytellerPersona>
 		<defName>PhoebePersona</defName>
 		<storytellerDefName>Phoebe</storytellerDefName>
@@ -82,11 +96,19 @@
 		<voiceProviders>
 			<li>
 				<name>google</name>
-				<voice>Achernar</voice>
+				<voice>Zephyr</voice>
 			</li>
 			<li>
 				<name>open_ai</name>
-				<voice>shimmer</voice>
+				<voice>alloy</voice>
+			</li>
+			<li>
+				<name>player2</name>
+				<voice></voice>
+			</li>
+			<li>
+				<name>novel_ai</name>
+				<voice></voice>
 			</li>
 		</voiceProviders>
 		<emotionModifiers>
@@ -103,7 +125,6 @@
 			<confident>sound encouraging and upbeat, as if proud of the colony’s progress.</confident>
 		</moodModifiers>
 	</StorytellerPersona>
-
 	<StorytellerPersona>
 		<defName>FallbackPersona</defName>
 		<storytellerDefName>Fallback</storytellerDefName>
@@ -120,6 +141,14 @@
 			<li>
 				<name>open_ai</name>
 				<voice>alloy</voice>
+			</li>
+			<li>
+				<name>player2</name>
+				<voice></voice>
+			</li>
+			<li>
+				<name>novel_ai</name>
+				<voice></voice>
 			</li>
 		</voiceProviders>
 		<emotionModifiers>

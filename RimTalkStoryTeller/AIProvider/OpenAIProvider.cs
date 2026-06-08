@@ -22,7 +22,7 @@ namespace LivingStoryteller
             return jsonString;
         }
 
-        public async Task<string> GetTTSResponse(string json)
+        public async Task<TTSResponseData> GetTTSResponse(string json)
         {
             var content = new StringContent(json, Encoding.UTF8, "application/json");
             var url = ModOptions.Settings.TTSEndpoint;
@@ -34,8 +34,8 @@ namespace LivingStoryteller
                 resp.EnsureSuccessStatusCode();
                 string responseBody = await resp.Content.ReadAsStringAsync();
                 LogManager.Log("[TTS] responseBody status code = " + resp.StatusCode);
-                
-                return responseBody;
+                byte[] bArry = Encoding.UTF8.GetBytes(responseBody); //needs to be tested with actual TTS response, may need to be base64 decoded or something else depending on the API
+                return new TTSResponseData(bArry);
             }
         }
 

@@ -9,7 +9,7 @@ namespace LivingStoryteller
     {
         private static readonly HttpClient httpClient = new HttpClient();
 
-        public async Task<string> GetTTSResponse(string json)
+        public async Task<TTSResponseData> GetTTSResponse(string json)
         {
             var content = new StringContent(json, Encoding.UTF8, "application/json");
             var url = ModOptions.Settings.TTSEndpoint + ModOptions.Settings.ApiKey;
@@ -19,11 +19,37 @@ namespace LivingStoryteller
                 resp.EnsureSuccessStatusCode();
                 string responseBody = await resp.Content.ReadAsStringAsync();
                 LogManager.Log("[TTS] responseBody status code = " + resp.StatusCode);
+                var pcmData = ExtractInlinePCM(responseBody);
 
-                return responseBody;
+                return new TTSResponseData(pcmData);
             }
         }
-        
+
+        private static byte[] ExtractInlinePCM(string responseBody)
+        {
+            // Find "inlineData"
+            int inlineIdx = responseBody.IndexOf("\"inlineData\"");
+            if (inlineIdx < 0)
+                return null;
+
+            // Find "data" inside inlineData
+            int dataIdx = responseBody.IndexOf("\"data\"", inlineIdx);
+            if (dataIdx < 0)
+                return null;
+
+            // Find the first quote after "data":
+            int start = responseBody.IndexOf('"', dataIdx + 6) + 1;
+            int end = responseBody.IndexOf('"', start);
+
+            if (start < 0 || end < 0)
+                return null;
+
+            string base64 = responseBody.Substring(start, end - start);
+            LogManager.Log("[TTS] Extracted base64 PCM length = " + base64.Length + "substring:" + base64.Substring(0, 10));
+            return Convert.FromBase64String(base64);
+        }
+
+
         public string JSONTTSRequest(string text, string personaDef, string voice, string emotion, string mood)
         {
             var promptBuilder = $"{StorytellerPersonaDatabase.GetPersonaText(personaDef)}.";

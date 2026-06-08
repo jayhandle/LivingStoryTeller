@@ -94,7 +94,7 @@ namespace LivingStoryteller
             }
 
             listing.Label("AI TTS Provider:");
-            if (listing.ButtonText(ConvertProviderToLabel(Settings.ProviderName)))
+            if (listing.ButtonText(ConvertProviderToLabel(Settings.TTSProviderName)))
             {
                 List<FloatMenuOption> options = new List<FloatMenuOption>();
                 foreach (StorytellerSettings.AIProvider provider in Enum.GetValues(typeof(StorytellerSettings.AIProvider)))
@@ -321,24 +321,32 @@ namespace LivingStoryteller
                     Settings.TTSModelName = "gpt-4o-mini-tts";
                     Settings.TTSEndpoint = "https://api.openai.com/v1/audio/speech";
                     Settings.ModelName = "gpt-4o-mini";
+                    Settings.ProviderName = StorytellerSettings.AIProvider.open_ai;
+                    Settings.TTSProviderName = StorytellerSettings.AIProvider.open_ai;
                     break;
                 case StorytellerSettings.AIProvider.player2:
                     Settings.Endpoint = "https://api.player2.game/v1/chat/completions";
                     Settings.TTSModelName = "player2";
                     Settings.TTSEndpoint = "https://api.player2.game/v1/tts/speak";
                     Settings.ModelName = "player2";
+                    Settings.ProviderName = StorytellerSettings.AIProvider.player2; 
+                    Settings.TTSProviderName = StorytellerSettings.AIProvider.player2;
                     break;
-                    case StorytellerSettings.AIProvider.novel_ai:
-                        Settings.Endpoint = "https://api.novelai.net/ai/generate";
-                        Settings.TTSModelName = "euterpe-v2";
-                        Settings.TTSEndpoint = "https://api.novelai.net/ai/generate/voice";
-                        Settings.ModelName = "novel_ai";
-                        break;
+                case StorytellerSettings.AIProvider.novel_ai:
+                    Settings.Endpoint = "https://text.novelai.net/ai/generate";
+                    Settings.TTSModelName = "kayra-v1";
+                    Settings.TTSEndpoint = "https://api.novelai.net/ai/generate-voice";
+                    Settings.ModelName = "kayra-v1";
+                    Settings.ProviderName = StorytellerSettings.AIProvider.novel_ai;
+                    Settings.TTSProviderName = StorytellerSettings.AIProvider.novel_ai;
+                    break;
                 default:
                     Settings.Endpoint = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions";
                     Settings.TTSModelName = "gemini-2.5-flash-preview-tts";
                     Settings.TTSEndpoint = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=";
                     Settings.ModelName = "gemini-2.5-flash";
+                    Settings.ProviderName = StorytellerSettings.AIProvider.google;
+                    Settings.TTSProviderName = StorytellerSettings.AIProvider.google;
                     break;
             }
         }

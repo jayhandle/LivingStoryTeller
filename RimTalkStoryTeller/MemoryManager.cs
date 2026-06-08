@@ -16,10 +16,14 @@ namespace LivingStoryteller
         public void AddMemory(MemoryRecord mem)
         {
             LogManager.Log($"[MemoryManager] Adding memory: {mem.Type} | {mem.Description} | Significant: {mem.IsSignificant}");
-            ShortTerm.Add(mem);
+            { 
+                ShortTerm.Add(mem); 
+            }
 
             if (mem.IsSignificant)
-                LongTerm.Add(mem);
+            { 
+                LongTerm.Add(mem); 
+            }
         }
 
         public void ExposeData()
@@ -36,11 +40,20 @@ namespace LivingStoryteller
 
             // Decay LTM
             LongTerm.RemoveAll(m => m.AgeTicks > 1200000); // ~20 days
+            foreach (var mem in ShortTerm)
+            {
+                mem.Tick();
+            }
 
-            foreach (var mem in ShortTerm)mem.Tick();
-            foreach (var mem in LongTerm)mem.Tick();
+            foreach (var mem in LongTerm)
+            {
+                mem.Tick();
+            }
             // Update arcs
-            foreach (var arc in ActiveArcs)arc.Tick();
+            foreach (var arc in ActiveArcs)
+            {
+                arc.Tick();
+            }
         }
     }
 

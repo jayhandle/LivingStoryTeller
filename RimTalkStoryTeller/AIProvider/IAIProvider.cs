@@ -9,7 +9,7 @@ namespace LivingStoryteller
 {
     public interface IAIProvider
     {
-        Task<string> GetTTSResponse(string content);
+        Task<TTSResponseData> GetTTSResponse(string content);
         string JSONTTSRequest(string text, string personaDef, string voice, string emotion, string mood);
 
         Task<string> GetResponse(string content);

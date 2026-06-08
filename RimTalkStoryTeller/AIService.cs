@@ -192,7 +192,8 @@ namespace LivingStoryteller
 
 
             string systemPrompt = persona + settings.PersonaText;
-            string userMessage = $"Event:{incidentLabel}"+ (colonyContext.NullOrEmpty() ? "" : ",\n" + colonyContext);
+            string userMessage = $"Event: {incidentLabel}";
+            userMessage += (colonyContext.NullOrEmpty() ? "" : colonyContext);
             string emotion = string.Empty;
             string mood = string.Empty;
             LogManager.Log($"Use Emotion: {settings.UseEmotion}");
@@ -204,26 +205,26 @@ namespace LivingStoryteller
                 LogManager.Log($"mood: {mood}");
                 UpdateMood(incidentCategory, incidentLabel);
 
-                systemPrompt += $@"\nCurrent emotional tone:""{emotion}"".";
-                systemPrompt += $@"\nCurrent storyteller mood:""{mood}"".";
+                systemPrompt += $"\nUse a {emotion} emotional tone.";
+                systemPrompt += $"\nYour current mood is {mood}";
 
                 systemPrompt += "\nAdjust your narration style to reflect both the immediate emotion and the long-term mood.";
 
-                userMessage += $@",\nEmotional tone:""{emotion}""";
-                userMessage += $@"\nmood:""{mood}""";
+                userMessage += $"\nEmotional tone: {emotion}";
+                userMessage += $"\nmood: {mood}";
 
             }
-            LogManager.Log($"Use Accent: {settings.UseAccent}");
+            LogManager.Log($"Use accent:{settings.UseAccent}." );
             if (settings.UseAccent)
             {
                 var accent = StorytellerPersonaDatabase.GetAccent(PersonaDefName);
                 LogManager.Log($"accent: {accent}");
-                systemPrompt += $@"\nUse Accent:""{accent}""";
-                userMessage += $@",\nAccent:""{accent}""";
+                systemPrompt += $"\nUse a {accent} accent.";
+                userMessage += $"\nAccent: {accent}";
             }
 
 
-            systemPrompt += "\n Keep in mind of past events in the Memory, if there are any.";
+            systemPrompt += "\nKeep in mind of past events in the Memory, if there are any.";
             userMessage += GetMemories();
 
             string name = storytellerName;
@@ -275,20 +276,20 @@ namespace LivingStoryteller
             var memories = string.Empty;
             if (LivingStorytellerTicksComponent.MemoryManager.ShortTerm.Any())
             {
-                memories = $"Recent Memory:\n";
+                memories = $"\nRecent Memory: ";
                 for (int i = 0; i < LivingStorytellerTicksComponent.MemoryManager.ShortTerm.Count; i++)
                 {
                     MemoryRecord? mem = LivingStorytellerTicksComponent.MemoryManager.ShortTerm[i];
-                    memories += $"-{mem.Type}|{mem.Description}\n";
+                    memories += $"{mem.Type} - {mem.Description} - {mem.AgeTicks/ 60000} days passed";
                 }
             }
 
             if (LivingStorytellerTicksComponent.MemoryManager.LongTerm.Any())
             {
-                memories += $"Long-Term Memory:\n";
+                memories += $"\nLong-Term Memory: ";
                 foreach (var mem in LivingStorytellerTicksComponent.MemoryManager.LongTerm)
                 {
-                    memories += $"- {mem.Type}|{mem.Description}\n";
+                    memories += $"{mem.Type} - {mem.Description} - {mem.AgeTicks / 60000} days passed";
                 }
             }
             return memories;
@@ -399,15 +400,7 @@ namespace LivingStoryteller
             var personaDef = StorytellerPersonaDatabase.GetPersonaDef(defName);
             string persona = personaDef.storytellerDefName;
 
-            string prompt = $@"
-You are {personaDef}, the Living Storyteller.
-The player has just loaded back into their RimWorld colony.
-Give them an in-character greeting.
-Summarize recent events/memories.
-Comment on the colony's current situation.
-Suggest what they might want to do next, if you can think of anything.
-Do not break character. 
-";
+            string prompt = $@"You are {persona}, the Living Storyteller. The player has just loaded back into their RimWorld colony. Give them an in-character greeting. Summarize recent events/memories. Comment on the colony's current situation. Suggest what they might want to do next, if you can think of anything. Do not break character.";
             string colonyContext = "";
             if (map != null)
             {
@@ -415,9 +408,9 @@ Do not break character.
                 float wealth = map.wealthWatcher.WealthTotal;
                 int day = GenDate.DaysPassed;
                 colonyContext =
-                    $"Colony:{colonists} colonists," +
-                    $"\nWealth:{wealth.ToString("F0")} wealth," +
-                    $"\nday:{day}";
+                    $"\nColony: {colonists} colonists" +
+                    $"\nWealth: {wealth.ToString("F0")} wealth" +
+                    $"\nday: {day}";
             }
 
             RequestNarration("Welcome Back","Greeting", prompt, colonyContext, personaDef.storytellerDefName, defName);

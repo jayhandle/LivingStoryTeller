@@ -1,4 +1,5 @@
-﻿using RimWorld;
+﻿using NAudio.Wave;
+using RimWorld;
 using System;
 using System.IO;
 using System.Net.Http;
@@ -10,10 +11,20 @@ using Verse;
 
 namespace LivingStoryteller
 {
+    public class TTSResponseData
+    {
+        public TTSResponseData(byte[] data, string type = "") 
+        {
+            Data = data;
+            DataType = type;
+        }
+        public byte[] Data;
+        public string DataType;
+    }
     public static class TTSService
     {
         private static readonly object audioLock = new object();
-        private static byte[] pendingPcm;
+        private static TTSResponseData pendingPcm;
         private static bool hasPendingClip = false;
         private static readonly HttpClient httpClient = new HttpClient();
         public static bool ProcessingAudio = false;
@@ -21,7 +32,7 @@ namespace LivingStoryteller
         // Called every frame from StorytellerAIService.ProcessPending()
         public static async Task ProcessPendingAudio()
         {
-            byte[] pcm = null;
+            TTSResponseData pcm = null;
 
             //lock (audioLock)
             //{
@@ -41,8 +52,15 @@ namespace LivingStoryteller
 
             if (pcm != null)
             {
-                LogManager.Log("[TTS] Processing pending PCM data length = " + pcm.Length);
-                var clip = PCM16ToAudioClip(pcm, 24000);
+                LogManager.Log("[TTS] Processing pending PCM data length = " + pcm.Data.Length);
+                if(pcm.DataType == "mpeg")
+                {
+                    LogManager.Log("[TTS] Converting MP3 to PCM.");
+                    pcm.Data = Mp3ToPcm(pcm.Data);
+                }
+
+                LogManager.Log("[TTS] Converting PCM to AudioClip.");
+                var clip = PCM16ToAudioClip(pcm.Data, 24000);
                 if (clip != null)
                 {
                     LogManager.Log("[TTS] Clip samples = " + clip.samples);
@@ -51,6 +69,39 @@ namespace LivingStoryteller
                 else
                 {
                     LogManager.Warning("[TTS] Failed to create AudioClip from PCM.");
+                }
+            }
+        }
+
+        public static byte[] Mp3ToPcm(byte[] mpegData)
+        {
+            // 1. Wrap the input byte array in a MemoryStream
+            using (var inputStream = new MemoryStream(mpegData))
+            // 2. Pass the stream to an MP3/MPEG decoder
+            using (var reader = new Mp3FileReader(inputStream))
+            {
+                // 3. Define the target 16-bit PCM format
+                var targetFormat = new WaveFormat(reader.WaveFormat.SampleRate, 16, reader.WaveFormat.Channels);
+
+                // 4. Use MediaFoundationResampler to convert the decoded bitstream into PCM16
+                using (var resampler = new MediaFoundationResampler(reader, targetFormat))
+                {
+                    resampler.ResamplerQuality = 60; // Highest quality conversion
+
+                    // 5. Read from the resampler into a memory stream to capture the output bytes
+                    using (var outputStream = new MemoryStream())
+                    {
+                        byte[] buffer = new byte[4096]; // 4KB chunk buffer
+                        int bytesRead;
+
+                        while ((bytesRead = resampler.Read(buffer, 0, buffer.Length)) > 0)
+                        {
+                            outputStream.Write(buffer, 0, bytesRead);
+                        }
+
+                        // Return the raw PCM16 byte array
+                        return outputStream.ToArray();
+                    }
                 }
             }
         }
@@ -72,11 +123,11 @@ namespace LivingStoryteller
             {
                 try
                 {
-                    byte[] pcm = await CallTTSAPIAsync(settings.ApiKey, PersonaDefName, text, emotion, mood);
+                    TTSResponseData pcm = await CallTTSAPIAsync(settings.ApiKey, PersonaDefName, text, emotion, mood);
 
-                    if (pcm != null && pcm.Length > 0)
+                    if (pcm != null && pcm.Data.Length > 0)
                     {
-                        LogManager.Log("[TTS] Received PCM data length = " + pcm.Length);    
+                        LogManager.Log("[TTS] Received PCM data length = " + pcm.Data.Length);    
                         pendingPcm = pcm;
                         hasPendingClip = true;
                     }
@@ -93,7 +144,7 @@ namespace LivingStoryteller
                 ProcessingAudio = false;
             });
         }
-        private static async Task<byte[]> CallTTSAPIAsync(string apiKey, string PersonaDefName, string text, string emotion, string mood)
+        private static async Task<TTSResponseData> CallTTSAPIAsync(string apiKey, string PersonaDefName, string text, string emotion, string mood)
         {
             var settings = ModOptions.Settings;
             string url = settings.TTSEndpoint;
@@ -113,33 +164,9 @@ namespace LivingStoryteller
             LogManager.Log("[TTS] JSON = " + json);
 
             var responseBody = await AIProviderFactory.GetTTSResponse(json);
-            var pcmData = ExtractInlinePCM(responseBody);
-            return pcmData;
+            return responseBody;
         }
 
-        private static byte[] ExtractInlinePCM(string responseBody)
-        {
-            // Find "inlineData"
-            int inlineIdx = responseBody.IndexOf("\"inlineData\"");
-            if (inlineIdx < 0)
-                return null;
-
-            // Find "data" inside inlineData
-            int dataIdx = responseBody.IndexOf("\"data\"", inlineIdx);
-            if (dataIdx < 0)
-                return null;
-
-            // Find the first quote after "data":
-            int start = responseBody.IndexOf('"', dataIdx + 6) + 1;
-            int end = responseBody.IndexOf('"', start);
-
-            if (start < 0 || end < 0)
-                return null;
-
-            string base64 = responseBody.Substring(start, end - start);
-            LogManager.Log("[TTS] Extracted base64 PCM length = " + base64.Length + "substring:" + base64.Substring(0, 10));
-            return Convert.FromBase64String(base64);
-        }
 
         public static AudioClip PCM16ToAudioClip(byte[] pcmData, int sampleRate = 24000)
         {

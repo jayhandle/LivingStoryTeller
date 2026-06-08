@@ -9,7 +9,7 @@ namespace LivingStoryteller
             return GetAIProvider(provider).GetResponse(content);
         }
 
-        public static Task<string> GetTTSResponse(string content)
+        public static Task<TTSResponseData> GetTTSResponse(string content)
         {
             var provider = ModOptions.Settings.TTSProviderName;
             return GetAIProvider(provider).GetTTSResponse(content);

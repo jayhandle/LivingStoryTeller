@@ -20,6 +20,12 @@ namespace LivingStoryTeller
         
         public override void GameComponentTick()
         {
+
+            if (Current.Game == null || Find.Maps == null || Find.Maps.Count == 0)
+            {
+                return;
+            }
+
             // Tick memory system every 60 ticks (~1 seconds)
             if (Find.TickManager.TicksGame % 60 == 0)
             {

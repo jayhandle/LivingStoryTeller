@@ -6,6 +6,7 @@ using System.Net;
 using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
+using Verse;
 
 namespace LivingStoryteller
 {
@@ -16,34 +17,35 @@ namespace LivingStoryteller
 
         public string JSONTTSRequest(string text, string personaDef, string voiceType, string emotion, string mood)
         {
+            text = text.Replace("\n", "");
+            text = text.Replace("\"", "");
+            text = text.Replace("\t", "");
+            text = text.Replace("\\", "");
             var json = $@"
 {{
-  ""text"": ""{text}"",
-  ""seed"": ""string"",
-  ""voice"": 0,
+  ""text"": ""{EscapeJson(text)}"",
+  ""seed"": ""{voiceType??"default"}"",
+  ""voice"": -1,
   ""opus"": true,
-  ""version"": ""v1""
+  ""version"": ""v2""
 }}
 ";
-
-            string jsonString = JsonConvert.SerializeObject(json);
-            return jsonString;
+            return json;
         }
 
-        public async Task<string> GetTTSResponse(string json)
+        public async Task<TTSResponseData> GetTTSResponse(string json)
         {
             var content = new StringContent(json, Encoding.UTF8, "application/json");
             var url = ModOptions.Settings.TTSEndpoint;
             httpClient.DefaultRequestHeaders.Clear();
             httpClient.DefaultRequestHeaders.Add("Authorization", "Bearer " + ModOptions.Settings.ApiKey);
             LogManager.Log($"[TTS] Making request to NovelAI TTS endpoint: {url}: with content: {json}");
-            using (var resp = await httpClient.PostAsync(ModOptions.Settings.Endpoint, content))
+            using (var resp = await httpClient.PostAsync(url, content))
             {
+                var responseBody = await resp.Content.ReadAsByteArrayAsync();
+                LogManager.Log("Raw API response count: " + responseBody.Count());
                 resp.EnsureSuccessStatusCode();
-                string responseBody = await resp.Content.ReadAsStringAsync();
-                LogManager.Log("[TTS] responseBody status code = " + resp.StatusCode);
-
-                return responseBody;
+                return new TTSResponseData(responseBody, "mpeg");
             }
         }
 
@@ -56,14 +58,15 @@ namespace LivingStoryteller
             client.Timeout = TimeSpan.FromSeconds(30);
             client.DefaultRequestHeaders.Clear();
             client.DefaultRequestHeaders.Add("Authorization", "Bearer " + apiKey);
+            LogManager.Log($"Sending request json:{json}\nTo endpoint {endpoint}");
             var content = new StringContent(json, Encoding.UTF8, "application/json");
             try
             {
                 using (var resp = await client.PostAsync(endpoint, content))
                 {
-                    resp.EnsureSuccessStatusCode();
                     string responseBody = await resp.Content.ReadAsStringAsync();
                     LogManager.Log("Raw API response: " + responseBody);
+                    resp.EnsureSuccessStatusCode();
                     // Debug logging via queue
                     string preview = responseBody.Length > 500
                         ? responseBody.Substring(0, 500) + "..."
@@ -88,19 +91,17 @@ namespace LivingStoryteller
 
         public string JSONRequest(string model, string systemPrompt, string userMessage)
         {
-            string json = $@"
-{{
-""input"": ""{userMessage}"",
+            userMessage = userMessage.Replace('"', '\'');
+            var storyteller = Find.Storyteller?.def;
+            string defName = storyteller?.defName ?? "";
+            string json = $@"{{
   ""model"": ""{model}"",
-  ""parameters"": {{
+  ""input"": ""These events just happened. \n{EscapeJson(userMessage)}\n Respond as this character.\n {EscapeJson(systemPrompt)}. Response now. "",
+   ""parameters"": {{
     ""use_string"": true,
-    ""temperature"": 1,
-    ""min_length"": 10,
-    ""max_length"": 30
-}}
-";
-            LogManager.Log($"Sending request json:{json}");
-
+    ""temperature"": 1
+  }}
+}}";
             return json;
 
         }
@@ -120,10 +121,18 @@ namespace LivingStoryteller
         {
             // Find the first "content" field in the response
             int contentIdx = json.IndexOf("\"content\"");
-            if (contentIdx < 0) return null;
+            int outputIdx = json.IndexOf("\"output\"");
+if (outputIdx >= 0 && contentIdx < 0 )
+            {
+                contentIdx = outputIdx;
+            }
+            if (contentIdx < 0)
+            { 
+                return null; 
+            }
 
             // Find the colon
-            int colonIdx = json.IndexOf(':', contentIdx + 9);
+            int colonIdx = json.IndexOf(':', contentIdx);
             if (colonIdx < 0) return null;
 
             // Find the opening quote of the value
