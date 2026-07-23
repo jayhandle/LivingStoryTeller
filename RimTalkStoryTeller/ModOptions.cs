@@ -161,6 +161,9 @@ namespace LivingStoryteller
             Settings.cooldownSeconds = listing.Slider(
                 Settings.cooldownSeconds, 10f, 300f);
 
+            listing.Gap();
+            listing.CheckboxLabeled("Skip events during cooldown", ref Settings.SkipEventsDuringCooldown);
+
             listing.GapLine();
             listing.Gap();
             listing.Label("This is the general persona. If you do not know what you are doing, do not change it!");

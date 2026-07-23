@@ -16,9 +16,22 @@ namespace LivingStoryteller
     [StaticConstructorOnStartup]
     public static class StorytellerAIService
     {
+        private class NarrationRequest
+        {
+            public string IncidentLabel;
+            public string IncidentCategory;
+            public string Persona;
+            public string ColonyContext;
+            public string StorytellerName;
+            public string PersonaDefName;
+            public string EventKey;
+        }
+
         private static bool isWaiting = false;
         private static float lastNarrationTime = -999f;
         private static List<string> eventProcessing = new List<string>();
+        private static Queue<NarrationRequest> queuedNarrationRequests = new Queue<NarrationRequest>();
+        private static readonly object queuedNarrationLock = new object();
         // Thread-safe narration queue
         private static readonly object pendingLock = new object();
         private static readonly object eventProcessingLock = new object();
@@ -55,6 +68,8 @@ namespace LivingStoryteller
                     }
                 }
             }
+
+            TryReleaseQueuedNarration();
             
 
             if(ModOptions.Settings.TTSEnabled && TTSService.ProcessingAudio)
@@ -145,6 +160,17 @@ namespace LivingStoryteller
         public static void RequestNarration(string incidentLabel, string incidentCategory, string persona, string colonyContext, string storytellerName, string PersonaDefName)
         {
             var eventKey = incidentLabel + "|" + incidentCategory;
+            var request = new NarrationRequest
+            {
+                IncidentLabel = incidentLabel,
+                IncidentCategory = incidentCategory,
+                Persona = persona,
+                ColonyContext = colonyContext,
+                StorytellerName = storytellerName,
+                PersonaDefName = PersonaDefName,
+                EventKey = eventKey
+            };
+
             LogManager.Log("Requesting narration for event: " + incidentLabel + " (Category: " + incidentCategory + ") EventKey:" + eventKey);
 
             lock (eventProcessingLock)
@@ -158,31 +184,92 @@ namespace LivingStoryteller
                 eventProcessing.Add(eventKey);
             }
 
-            LogManager.Log(
-                "[LivingStoryteller] Event intercepted: " + eventKey);
+            LogManager.Log("[LivingStoryteller] Event intercepted: " + eventKey);
             var settings = ModOptions.Settings;
 
             if (settings.ApiKey.NullOrEmpty())
             {
                 LogManager.Warning( "[LivingStoryteller] No API key configured. " + "Go to Mod Settings > The Living Storyteller.");
-                eventProcessing.Remove(eventKey);
+                RemoveEventProcessing(eventKey);
                 return;
             }
 
-            if (Time.time - lastNarrationTime < settings.cooldownSeconds)
+            if (IsCooldownActive())
             {
-                LogManager.Log("Cooldown active. Skipping narration for event: " + incidentLabel + " (Category: " + incidentCategory + ")");
-                eventProcessing.Remove(eventKey);
+                if (settings.SkipEventsDuringCooldown)
+                {
+                    LogManager.Log("Cooldown active and skip enabled. Skipping narration for event: " + incidentLabel + " (Category: " + incidentCategory + ")");
+                    RemoveEventProcessing(eventKey);
+                    return;
+                }
+
+                EnqueueNarrationRequest(request, "cooldown active");
                 return;
             }
 
             if (isWaiting)
             {
-                LogManager.Log("Already waiting for a narration response. " + "Skipping new narration for event: " + incidentLabel + " (Category: " + incidentCategory + ")");
-                eventProcessing.Remove(eventKey);
+                EnqueueNarrationRequest(request, "already waiting for narration response");
                 return;
             }
 
+            StartNarrationRequest(request);
+        }
+
+        private static bool IsCooldownActive()
+        {
+            return Time.time - lastNarrationTime < ModOptions.Settings.cooldownSeconds;
+        }
+
+        private static void EnqueueNarrationRequest(NarrationRequest request, string reason)
+        {
+            lock (queuedNarrationLock)
+            {
+                queuedNarrationRequests.Enqueue(request);
+                LogManager.Log("Narration delayed (" + reason + "). Queued event: " + request.EventKey + ". Queue size: " + queuedNarrationRequests.Count);
+            }
+        }
+
+        private static void TryReleaseQueuedNarration()
+        {
+            if (isWaiting || IsCooldownActive())
+                return;
+
+            NarrationRequest next = null;
+            lock (queuedNarrationLock)
+            {
+                if (queuedNarrationRequests.Count > 0)
+                {
+                    next = queuedNarrationRequests.Dequeue();
+                    LogManager.Log("Cooldown complete. Releasing queued event: " + next.EventKey + ". Remaining queue size: " + queuedNarrationRequests.Count);
+                }
+            }
+
+            if (next == null)
+                return;
+
+            lock (eventProcessingLock)
+            {
+                if (!eventProcessing.Contains(next.EventKey))
+                {
+                    // Event can be removed externally; do not process stale queued requests.
+                    return;
+                }
+            }
+
+            StartNarrationRequest(next);
+        }
+
+        private static void RemoveEventProcessing(string eventKey)
+        {
+            lock (eventProcessingLock)
+            {
+                eventProcessing.Remove(eventKey);
+            }
+        }
+
+        private static void StartNarrationRequest(NarrationRequest request)
+        {
             lastNarrationTime = Time.time;
             isWaiting = true;
 
@@ -191,19 +278,19 @@ namespace LivingStoryteller
 
 
 
-            string systemPrompt = persona + settings.PersonaText;
-            string userMessage = $"Event: {incidentLabel}";
-            userMessage += (colonyContext.NullOrEmpty() ? "" : colonyContext);
+            string systemPrompt = request.Persona + settings.PersonaText;
+            string userMessage = $"Event: {request.IncidentLabel}";
+            userMessage += (request.ColonyContext.NullOrEmpty() ? "" : request.ColonyContext);
             string emotion = string.Empty;
             string mood = string.Empty;
             LogManager.Log($"Use Emotion: {settings.UseEmotion}");
             if (settings.UseEmotion)
             {
-                emotion = GetEmotion(incidentCategory, incidentLabel, PersonaDefName);
+                emotion = GetEmotion(request.IncidentCategory, request.IncidentLabel, request.PersonaDefName);
                 LogManager.Log($"emotion: {emotion}");
-                mood = GetMoodDescriptor(PersonaDefName);
+                mood = GetMoodDescriptor(request.PersonaDefName);
                 LogManager.Log($"mood: {mood}");
-                UpdateMood(incidentCategory, incidentLabel);
+                UpdateMood(request.IncidentCategory, request.IncidentLabel);
 
                 systemPrompt += $"\nUse a {emotion} emotional tone.";
                 systemPrompt += $"\nYour current mood is {mood}";
@@ -217,7 +304,7 @@ namespace LivingStoryteller
             LogManager.Log($"Use accent:{settings.UseAccent}." );
             if (settings.UseAccent)
             {
-                var accent = StorytellerPersonaDatabase.GetAccent(PersonaDefName);
+                var accent = StorytellerPersonaDatabase.GetAccent(request.PersonaDefName);
                 LogManager.Log($"accent: {accent}");
                 systemPrompt += $"\nUse a {accent} accent.";
                 userMessage += $"\nAccent: {accent}";
@@ -227,10 +314,12 @@ namespace LivingStoryteller
             systemPrompt += "\nKeep in mind of past events in the Memory, if there are any.";
             userMessage += GetMemories();
 
-            string name = storytellerName;
+            string name = request.StorytellerName;
             string endpoint = settings.Endpoint;
             string apiKey = settings.ApiKey.Trim();
             string model = settings.ModelName;
+            string eventKey = request.EventKey;
+            string personaDefName = request.PersonaDefName;
 
             Task.Run(async() =>
             {
@@ -245,7 +334,7 @@ namespace LivingStoryteller
                         if (!response.NullOrEmpty())
                         {
                             QueueLog("Narration received.");
-                            if(settings.TTSEnabled) TTSService.RequestSpeech(response, PersonaDefName, emotion, mood);
+                            if(settings.TTSEnabled) TTSService.RequestSpeech(response, personaDefName, emotion, mood);
                             lock (pendingLock)
                             {
                                 pendingName = name;
@@ -267,7 +356,7 @@ namespace LivingStoryteller
                 }
 
                 isWaiting = false;
-                eventProcessing.Remove(eventKey);
+                RemoveEventProcessing(eventKey);
             });
         }
 
