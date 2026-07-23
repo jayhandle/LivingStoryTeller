@@ -278,13 +278,13 @@ namespace LivingStoryteller
 
 
 
-            string systemPrompt = request.Persona + settings.PersonaText;
+            string systemPrompt = request.Persona + ModOptions.Settings.PersonaText;
             string userMessage = $"Event: {request.IncidentLabel}";
             userMessage += (request.ColonyContext.NullOrEmpty() ? "" : request.ColonyContext);
             string emotion = string.Empty;
             string mood = string.Empty;
-            LogManager.Log($"Use Emotion: {settings.UseEmotion}");
-            if (settings.UseEmotion)
+            LogManager.Log($"Use Emotion: {ModOptions.Settings.UseEmotion}");
+            if (ModOptions.Settings.UseEmotion)
             {
                 emotion = GetEmotion(request.IncidentCategory, request.IncidentLabel, request.PersonaDefName);
                 LogManager.Log($"emotion: {emotion}");
@@ -301,8 +301,8 @@ namespace LivingStoryteller
                 userMessage += $"\nmood: {mood}";
 
             }
-            LogManager.Log($"Use accent:{settings.UseAccent}." );
-            if (settings.UseAccent)
+            LogManager.Log($"Use accent:{ModOptions.Settings.UseAccent}." );
+            if (ModOptions.Settings.UseAccent)
             {
                 var accent = StorytellerPersonaDatabase.GetAccent(request.PersonaDefName);
                 LogManager.Log($"accent: {accent}");
@@ -315,9 +315,9 @@ namespace LivingStoryteller
             userMessage += GetMemories();
 
             string name = request.StorytellerName;
-            string endpoint = settings.Endpoint;
-            string apiKey = settings.ApiKey.Trim();
-            string model = settings.ModelName;
+            string endpoint = ModOptions.Settings.Endpoint;
+            string apiKey = ModOptions.Settings.ApiKey.Trim();
+            string model = ModOptions.Settings.ModelName;
             string eventKey = request.EventKey;
             string personaDefName = request.PersonaDefName;
 
@@ -334,7 +334,7 @@ namespace LivingStoryteller
                         if (!response.NullOrEmpty())
                         {
                             QueueLog("Narration received.");
-                            if(settings.TTSEnabled) TTSService.RequestSpeech(response, personaDefName, emotion, mood);
+                            if(ModOptions.Settings.TTSEnabled) TTSService.RequestSpeech(response, personaDefName, emotion, mood);
                             lock (pendingLock)
                             {
                                 pendingName = name;
