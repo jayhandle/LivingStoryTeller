@@ -192,14 +192,32 @@ namespace LivingStoryteller
         private static object GetLatestEntryFromComponent(object component)
         {
             var entriesContainer = GetMemberValue(component,
-                "entries", "Entries", "storyEntries", "StoryEntries", "stories", "Stories",
-                "chronicle", "Chronicle", "memory", "Memory", "echoStoryMemory", "EchoStoryMemory");
+                "entries", "Entries", "SavedEntries", "savedEntries", "storyEntries", "StoryEntries", "stories", "Stories",
+                "chronicle", "Chronicle", "memory", "Memory", "PersistentMemory", "persistentMemory",
+                "echoStoryMemory", "EchoStoryMemory", "memoryResponse", "newMemory", "story", "Story");
 
             if (entriesContainer != null)
             {
                 var knownEntry = GetLastFromEnumerable(entriesContainer);
                 if (knownEntry != null)
                     return knownEntry;
+
+                var nestedEntriesContainer = GetMemberValue(entriesContainer,
+                    "entries", "Entries", "SavedEntries", "savedEntries", "storyEntries", "StoryEntries", "stories", "Stories",
+                    "chronicle", "Chronicle", "memory", "Memory", "PersistentMemory", "persistentMemory",
+                    "echoStoryMemory", "EchoStoryMemory");
+
+                if (nestedEntriesContainer != null)
+                {
+                    var nestedKnownEntry = GetLastFromEnumerable(nestedEntriesContainer);
+                    if (nestedKnownEntry != null)
+                        return nestedKnownEntry;
+
+                    LogManager.Log("[EchoTales] Probe detail: nested entries container found but it was empty or non-enumerable. containerType=" + nestedEntriesContainer.GetType().FullName);
+                }
+
+                if (LooksLikeEchoTalesEntry(entriesContainer))
+                    return entriesContainer;
 
                 LogManager.Log("[EchoTales] Probe detail: known entries container found, but it was empty or non-enumerable. containerType=" + entriesContainer.GetType().FullName);
             }
