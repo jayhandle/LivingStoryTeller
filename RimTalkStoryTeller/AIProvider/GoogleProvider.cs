@@ -12,46 +12,60 @@ namespace LivingStoryteller
 
         public async Task<TTSResponseData> GetTTSResponse(string json)
         {
-            var url = ModOptions.Settings.TTSEndpoint + ModOptions.Settings.ApiKey;
-            var safeUrl = MaskApiKeyInUrl(url);
-            LogManager.Log($"[TTS] Making request to Google TTS endpoint: {safeUrl}. Payload length = {json?.Length ?? 0}");
+            // 1. Separate the base endpoint URL from the API key
+            var baseUrl = ModOptions.Settings.TTSEndpoint; // e.g., "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent"
+            var apiKey = ModOptions.Settings.ApiKey;
+
+            LogManager.Log($"[TTS] Making request to Google TTS endpoint: {baseUrl}. Payload length = {json?.Length ?? 0}");
 
             for (int attempt = 1; attempt <= MaxTtsAttempts; attempt++)
             {
-                using (var content = new StringContent(json, Encoding.UTF8, "application/json"))
-                using (var resp = await httpClient.PostAsync(url, content))
+                // 2. Use HttpRequestMessage to explicitly configure headers per request
+                using (var request = new HttpRequestMessage(HttpMethod.Post, baseUrl))
                 {
-                    if (resp.StatusCode == (HttpStatusCode)429)
-                    {
-                        string errorBody = await resp.Content.ReadAsStringAsync();
+                    // Clear any lingering Bearer/OAuth authorization headers on the request
+                    request.Headers.Authorization = null;
 
-                        if (attempt == MaxTtsAttempts)
+                    // Set the Google API Key header explicitly
+                    request.Headers.Add("x-goog-api-key", apiKey);
+
+                    // Attach the JSON payload
+                    request.Content = new StringContent(json, Encoding.UTF8, "application/json");
+
+                    using (var resp = await httpClient.SendAsync(request))
+                    {
+                        if (resp.StatusCode == (HttpStatusCode)429)
                         {
-                            LogManager.Error("[TTS] Google rate limit reached after retries. " +
-                                "Last status: 429, body preview: " + MakePreview(errorBody, 500));
-                            throw new HttpRequestException("Google TTS rate limited (429) after retries.");
+                            string errorBody = await resp.Content.ReadAsStringAsync();
+
+                            if (attempt == MaxTtsAttempts)
+                            {
+                                LogManager.Error("[TTS] Google rate limit reached after retries. " +
+                                    "Last status: 429, body preview: " + MakePreview(errorBody, 500));
+                                throw new HttpRequestException("Google TTS rate limited (429) after retries.");
+                            }
+
+                            var delay = GetRetryDelay(resp, attempt);
+                            LogManager.Warning($"[TTS] Google TTS rate limited (429). " +
+                                $"Retrying in {(int)delay.TotalMilliseconds}ms (attempt {attempt}/{MaxTtsAttempts}).");
+                            await Task.Delay(delay);
+                            continue;
                         }
 
-                        var delay = GetRetryDelay(resp, attempt);
-                        LogManager.Warning($"[TTS] Google TTS rate limited (429). " +
-                            $"Retrying in {(int)delay.TotalMilliseconds}ms (attempt {attempt}/{MaxTtsAttempts}).");
-                        await Task.Delay(delay);
-                        continue;
+                        if (!resp.IsSuccessStatusCode)
+                        {
+                            string errorBody = await resp.Content.ReadAsStringAsync();
+                            LogManager.Error("[TTS] Google TTS request failed. Status: " + resp.StatusCode +
+                                ", body preview: " + MakePreview(errorBody, 500));
+                            resp.EnsureSuccessStatusCode();
+                        }
+
+                        string responseBody = await resp.Content.ReadAsStringAsync();
+                        LogManager.Log("[TTS] responseBody status code = " + resp.StatusCode);
+                        var pcmData = ExtractInlinePCM(responseBody);
+
+                        return new TTSResponseData(pcmData);
                     }
-
-                    if (!resp.IsSuccessStatusCode)
-                    {
-                        string errorBody = await resp.Content.ReadAsStringAsync();
-                        LogManager.Error("[TTS] Google TTS request failed. Status: " + resp.StatusCode +
-                            ", body preview: " + MakePreview(errorBody, 500));
-                        resp.EnsureSuccessStatusCode();
-                    }
-
-                    string responseBody = await resp.Content.ReadAsStringAsync();
-                    LogManager.Log("[TTS] responseBody status code = " + resp.StatusCode);
-                    var pcmData = ExtractInlinePCM(responseBody);
-
-                    return new TTSResponseData(pcmData);
                 }
             }
 
