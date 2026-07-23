@@ -177,26 +177,39 @@ namespace LivingStoryteller
         public async Task<string> GetResponse(string json)
         {
             var endpoint = ModOptions.Settings.Endpoint;
-            if (!endpoint.StartsWith("http"))
+
+            // Ensure proper scheme formatting
+            if (!endpoint.StartsWith("http://") && !endpoint.StartsWith("https://"))
             {
-                endpoint = endpoint.Replace("http://", "");
                 endpoint = "https://" + endpoint;
             }
 
             var apiKey = ModOptions.Settings.ApiKey;
             var client = httpClient;
             client.Timeout = TimeSpan.FromSeconds(30);
+
+            // Clear headers and set the Google-specific API key header
             client.DefaultRequestHeaders.Clear();
-            client.DefaultRequestHeaders.Add("Authorization", "Bearer " + apiKey);
+            client.DefaultRequestHeaders.Add("x-goog-api-key", apiKey);
+
             var content = new StringContent(json, Encoding.UTF8, "application/json");
+
             try
             {
                 using (var resp = await client.PostAsync(endpoint, content))
                 {
+                    // Catch 429 specifically for HttpClient (PostAsync throws HttpRequestException, not WebException)
+                    if (resp.StatusCode == (HttpStatusCode)429)
+                    {
+                        LogManager.Warning("[LivingStoryteller] Rate limited. Skipping this narration.");
+                        return null;
+                    }
+
                     resp.EnsureSuccessStatusCode();
+
                     string responseBody = await resp.Content.ReadAsStringAsync();
-                    LogManager.Log("Raw API response: " + responseBody);
-                    // Debug logging via queue
+
+                    // Debug logging
                     string preview = responseBody.Length > 500
                         ? responseBody.Substring(0, 500) + "..."
                         : responseBody;
@@ -206,16 +219,9 @@ namespace LivingStoryteller
                     return ParseContent(responseBody);
                 }
             }
-            catch (WebException wex)
+            catch (HttpRequestException ex)
             {
-                var httpResp =
-                    wex.Response as HttpWebResponse;
-                if (httpResp != null &&
-                    (int)httpResp.StatusCode == 429)
-                {
-                    LogManager.Warning("[LivingStoryteller] Rate limited. " + "Skipping this narration.");
-                    return null;
-                }
+                LogManager.Error("[LivingStoryteller] Chat API request failed: " + ex.Message);
                 throw;
             }
         }
