@@ -164,6 +164,15 @@ namespace LivingStoryteller
             listing.Gap();
             listing.CheckboxLabeled("Skip events during cooldown", ref Settings.SkipEventsDuringCooldown);
 
+            listing.Gap();
+            listing.CheckboxLabeled("Enable EchoTales integration (daily tale commentary)", ref Settings.EnableEchoTalesIntegration);
+
+            if (Settings.EnableEchoTalesIntegration)
+            {
+                listing.Gap();
+                listing.CheckboxLabeled("EchoTales: read every new entry (not just once per day)", ref Settings.EchoTalesReadEveryNewEntry);
+            }
+
             listing.GapLine();
             listing.Gap();
             listing.Label("This is the general persona. If you do not know what you are doing, do not change it!");

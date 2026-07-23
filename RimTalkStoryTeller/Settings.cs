@@ -34,6 +34,8 @@ namespace LivingStoryteller
         public float displayDuration = 15f;
         public float cooldownSeconds = 60f;
         public bool SkipEventsDuringCooldown = false;
+        public bool EnableEchoTalesIntegration = true;
+        public bool EchoTalesReadEveryNewEntry = false;
         public bool DebugLogging = false;
         public bool UseAccent = true;
         public bool UseEmotion = true;
@@ -62,6 +64,8 @@ namespace LivingStoryteller
             Scribe_Values.Look(ref displayDuration, "displayDuration", 15f);
             Scribe_Values.Look(ref cooldownSeconds, "cooldownSeconds", 60f);
             Scribe_Values.Look(ref SkipEventsDuringCooldown, "skipEventsDuringCooldown", false);
+            Scribe_Values.Look(ref EnableEchoTalesIntegration, "enableEchoTalesIntegration", true);
+            Scribe_Values.Look(ref EchoTalesReadEveryNewEntry, "echoTalesReadEveryNewEntry", false);
             Scribe_Values.Look(ref DebugLogging, "DebugLogging", true);
             Scribe_Values.Look(ref UseAccent, "UseAccent", true);
             Scribe_Values.Look(ref UseEmotion, "UseEmotion", true);
