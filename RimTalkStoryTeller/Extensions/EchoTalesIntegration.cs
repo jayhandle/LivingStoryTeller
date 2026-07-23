@@ -1,6 +1,7 @@
 using RimWorld;
 using System.Collections;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using Verse;
 
 namespace LivingStoryteller
@@ -13,6 +14,7 @@ namespace LivingStoryteller
         private static int nextCheckTick;
         private static bool loggedIntegrationDisabled;
         private static bool loggedModInactive;
+        private static bool loggedComponentSchema;
 
         public static void TryProcessDailyTale()
         {
@@ -193,10 +195,29 @@ namespace LivingStoryteller
                 "entries", "Entries", "storyEntries", "StoryEntries", "stories", "Stories",
                 "chronicle", "Chronicle", "memory", "Memory", "echoStoryMemory", "EchoStoryMemory");
 
-            if (entriesContainer == null)
-                return null;
+            if (entriesContainer != null)
+            {
+                var knownEntry = GetLastFromEnumerable(entriesContainer);
+                if (knownEntry != null)
+                    return knownEntry;
 
-            return GetLastFromEnumerable(entriesContainer);
+                LogManager.Log("[EchoTales] Probe detail: known entries container found, but it was empty or non-enumerable. containerType=" + entriesContainer.GetType().FullName);
+            }
+            else if (!loggedComponentSchema)
+            {
+                LogManager.Log("[EchoTales] Probe detail: known entry member names were not found. Dumping component schema for diagnosis.");
+                LogComponentSchema(component);
+                loggedComponentSchema = true;
+            }
+
+            var fallbackEntry = TryFindLatestEntryByHeuristic(component, out var sourcePath);
+            if (fallbackEntry != null)
+            {
+                LogManager.Log("[EchoTales] Probe detail: heuristic entry discovery succeeded via " + sourcePath + ".");
+                return fallbackEntry;
+            }
+
+            return null;
         }
 
         private static string ReadEntryText(object entry)
@@ -296,6 +317,186 @@ namespace LivingStoryteller
             }
 
             return null;
+        }
+
+        private static object TryFindLatestEntryByHeuristic(object root, out string sourcePath)
+        {
+            sourcePath = string.Empty;
+
+            if (root == null)
+                return null;
+
+            var visited = new HashSet<int>();
+            var queue = new Queue<(object node, int depth, string path)>();
+            queue.Enqueue((root, 0, "component"));
+
+            while (queue.Count > 0)
+            {
+                var (node, depth, path) = queue.Dequeue();
+                if (node == null)
+                    continue;
+
+                int id = RuntimeHelpers.GetHashCode(node);
+                if (!visited.Add(id))
+                    continue;
+
+                if (depth > 2)
+                    continue;
+
+                foreach (var member in GetReadableMembers(node.GetType()))
+                {
+                    if (!TryReadMember(node, member, out var value) || value == null)
+                        continue;
+
+                    string memberPath = path + "." + member.Name;
+
+                    if (value is IEnumerable enumerable && value is not string)
+                    {
+                        var last = GetLastFromEnumerable(enumerable);
+                        if (last != null && LooksLikeEchoTalesEntry(last))
+                        {
+                            sourcePath = memberPath;
+                            return last;
+                        }
+
+                        if (depth < 2)
+                        {
+                            foreach (var item in enumerable)
+                            {
+                                if (item == null || IsSimpleType(item.GetType()))
+                                    continue;
+
+                                queue.Enqueue((item, depth + 1, memberPath + "[]"));
+                                break;
+                            }
+                        }
+                    }
+                    else if (!IsSimpleType(value.GetType()) && depth < 2)
+                    {
+                        queue.Enqueue((value, depth + 1, memberPath));
+                    }
+                }
+            }
+
+            return null;
+        }
+
+        private static bool LooksLikeEchoTalesEntry(object candidate)
+        {
+            if (candidate == null)
+                return false;
+
+            var text = ReadEntryText(candidate);
+            if (!text.NullOrEmpty())
+                return true;
+
+            return HasMember(candidate.GetType(), "day", "Day", "story", "Story", "text", "Text", "content", "Content", "entryText", "EntryText", "description", "Description", "summary", "Summary");
+        }
+
+        private static void LogComponentSchema(object component)
+        {
+            if (component == null)
+                return;
+
+            try
+            {
+                var type = component.GetType();
+                LogManager.Log("[EchoTales] Component type: " + type.FullName);
+
+                foreach (var member in GetReadableMembers(type))
+                {
+                    string details = "unknown";
+                    if (TryReadMember(component, member, out var value))
+                    {
+                        if (value == null)
+                        {
+                            details = "null";
+                        }
+                        else if (value is string str)
+                        {
+                            details = "string(len=" + str.Length + ")";
+                        }
+                        else if (value is IEnumerable)
+                        {
+                            details = "enumerable(" + value.GetType().Name + ")";
+                        }
+                        else
+                        {
+                            details = value.GetType().FullName;
+                        }
+                    }
+
+                    LogManager.Log("[EchoTales] Component member: " + member.Name + " => " + details);
+                }
+            }
+            catch (Exception ex)
+            {
+                LogManager.Warning("[EchoTales] Failed to log component schema: " + ex.Message);
+            }
+        }
+
+        private static IEnumerable<MemberInfo> GetReadableMembers(Type type)
+        {
+            const BindingFlags flags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
+
+            foreach (var prop in type.GetProperties(flags))
+            {
+                if (prop.GetIndexParameters().Length == 0)
+                    yield return prop;
+            }
+
+            foreach (var field in type.GetFields(flags))
+                yield return field;
+        }
+
+        private static bool TryReadMember(object target, MemberInfo member, out object value)
+        {
+            value = null;
+
+            try
+            {
+                switch (member)
+                {
+                    case PropertyInfo prop:
+                        value = prop.GetValue(target);
+                        return true;
+                    case FieldInfo field:
+                        value = field.GetValue(target);
+                        return true;
+                    default:
+                        return false;
+                }
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private static bool HasMember(Type type, params string[] memberNames)
+        {
+            const BindingFlags flags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
+
+            foreach (var name in memberNames)
+            {
+                if (type.GetProperty(name, flags) != null || type.GetField(name, flags) != null)
+                    return true;
+            }
+
+            return false;
+        }
+
+        private static bool IsSimpleType(Type type)
+        {
+            if (type.IsPrimitive || type.IsEnum)
+                return true;
+
+            return type == typeof(string) ||
+                   type == typeof(decimal) ||
+                   type == typeof(DateTime) ||
+                   type == typeof(DateTimeOffset) ||
+                   type == typeof(TimeSpan) ||
+                   type == typeof(Guid);
         }
 
         private static string EscapeJson(string value)
