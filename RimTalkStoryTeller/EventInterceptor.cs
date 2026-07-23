@@ -35,6 +35,7 @@ namespace LivingStoryteller
             }
 
             eventName += $@"""description"": ""{label}""";
+            eventName += $@"""text"": ""{incident.letterText}""";
             eventName += $@"}}";
 
             LivingStorytellerTicksComponent.MemoryManager.AddMemory(new MemoryRecord()

@@ -8,21 +8,101 @@ namespace LivingStoryteller
     internal class GoogleProvider : IAIProvider
     {
         private static readonly HttpClient httpClient = new HttpClient();
+        private const int MaxTtsAttempts = 3;
 
         public async Task<TTSResponseData> GetTTSResponse(string json)
         {
-            var content = new StringContent(json, Encoding.UTF8, "application/json");
             var url = ModOptions.Settings.TTSEndpoint + ModOptions.Settings.ApiKey;
-            LogManager.Log($"[TTS] Making request to Google TTS endpoint: {url}: with content: {json}");
-            using (var resp = await new HttpClient().PostAsync(url, content))
-            {
-                resp.EnsureSuccessStatusCode();
-                string responseBody = await resp.Content.ReadAsStringAsync();
-                LogManager.Log("[TTS] responseBody status code = " + resp.StatusCode);
-                var pcmData = ExtractInlinePCM(responseBody);
+            var safeUrl = MaskApiKeyInUrl(url);
+            LogManager.Log($"[TTS] Making request to Google TTS endpoint: {safeUrl}. Payload length = {json?.Length ?? 0}");
 
-                return new TTSResponseData(pcmData);
+            for (int attempt = 1; attempt <= MaxTtsAttempts; attempt++)
+            {
+                using (var content = new StringContent(json, Encoding.UTF8, "application/json"))
+                using (var resp = await httpClient.PostAsync(url, content))
+                {
+                    if (resp.StatusCode == (HttpStatusCode)429)
+                    {
+                        string errorBody = await resp.Content.ReadAsStringAsync();
+
+                        if (attempt == MaxTtsAttempts)
+                        {
+                            LogManager.Error("[TTS] Google rate limit reached after retries. " +
+                                "Last status: 429, body preview: " + MakePreview(errorBody, 500));
+                            throw new HttpRequestException("Google TTS rate limited (429) after retries.");
+                        }
+
+                        var delay = GetRetryDelay(resp, attempt);
+                        LogManager.Warning($"[TTS] Google TTS rate limited (429). " +
+                            $"Retrying in {(int)delay.TotalMilliseconds}ms (attempt {attempt}/{MaxTtsAttempts}).");
+                        await Task.Delay(delay);
+                        continue;
+                    }
+
+                    if (!resp.IsSuccessStatusCode)
+                    {
+                        string errorBody = await resp.Content.ReadAsStringAsync();
+                        LogManager.Error("[TTS] Google TTS request failed. Status: " + resp.StatusCode +
+                            ", body preview: " + MakePreview(errorBody, 500));
+                        resp.EnsureSuccessStatusCode();
+                    }
+
+                    string responseBody = await resp.Content.ReadAsStringAsync();
+                    LogManager.Log("[TTS] responseBody status code = " + resp.StatusCode);
+                    var pcmData = ExtractInlinePCM(responseBody);
+
+                    return new TTSResponseData(pcmData);
+                }
             }
+
+            throw new HttpRequestException("Google TTS request did not complete successfully.");
+        }
+
+        private static TimeSpan GetRetryDelay(HttpResponseMessage resp, int attempt)
+        {
+            var retryAfter = resp.Headers?.RetryAfter;
+            if (retryAfter != null)
+            {
+                if (retryAfter.Delta.HasValue && retryAfter.Delta.Value > TimeSpan.Zero)
+                    return retryAfter.Delta.Value;
+
+                if (retryAfter.Date.HasValue)
+                {
+                    var delta = retryAfter.Date.Value - DateTimeOffset.UtcNow;
+                    if (delta > TimeSpan.Zero)
+                        return delta;
+                }
+            }
+
+            // Exponential backoff with modest caps to avoid blocking game flow too long.
+            int delayMs = Math.Min(8000, 1000 * (1 << (attempt - 1)));
+            return TimeSpan.FromMilliseconds(delayMs);
+        }
+
+        private static string MaskApiKeyInUrl(string url)
+        {
+            if (string.IsNullOrEmpty(url))
+                return "";
+
+            const string keyToken = "key=";
+            int keyIdx = url.IndexOf(keyToken, StringComparison.OrdinalIgnoreCase);
+            if (keyIdx < 0)
+                return url;
+
+            int valueStart = keyIdx + keyToken.Length;
+            int valueEnd = url.IndexOf('&', valueStart);
+            if (valueEnd < 0)
+                valueEnd = url.Length;
+
+            return url.Substring(0, valueStart) + "***" + url.Substring(valueEnd);
+        }
+
+        private static string MakePreview(string text, int maxLen)
+        {
+            if (string.IsNullOrEmpty(text))
+                return "<empty>";
+
+            return text.Length <= maxLen ? text : text.Substring(0, maxLen) + "...";
         }
 
         private static byte[] ExtractInlinePCM(string responseBody)
@@ -45,7 +125,8 @@ namespace LivingStoryteller
                 return null;
 
             string base64 = responseBody.Substring(start, end - start);
-            LogManager.Log("[TTS] Extracted base64 PCM length = " + base64.Length + "substring:" + base64.Substring(0, 10));
+            string base64Preview = base64.Length > 10 ? base64.Substring(0, 10) : base64;
+            LogManager.Log("[TTS] Extracted base64 PCM length = " + base64.Length + " substring: " + base64Preview);
             return Convert.FromBase64String(base64);
         }
 

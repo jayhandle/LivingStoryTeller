@@ -91,17 +91,19 @@ namespace LivingStoryteller
 
         public string JSONRequest(string model, string systemPrompt, string userMessage)
         {
-            userMessage = userMessage.Replace('"', '\'');
-            var storyteller = Find.Storyteller?.def;
-            string defName = storyteller?.defName ?? "";
-            string json = $@"{{
-  ""model"": ""{model}"",
-  ""input"": ""These events just happened. \n{EscapeJson(userMessage)}\n Respond as this character.\n {EscapeJson(systemPrompt)}. Response now. "",
-   ""parameters"": {{
-    ""use_string"": true,
-    ""temperature"": 1
-  }}
-}}";
+            string json =
+            "{\"model\":\"" + EscapeJson(model) + "\"," +
+            "\"messages\":[" +
+            "{\"role\":\"system\",\"content\":\"" +
+            EscapeJson(systemPrompt) + "\"}," +
+            "{\"role\":\"user\",\"content\":\"{" +
+            EscapeJson(userMessage) + "\"}" +
+            "]," +
+            "\"max_tokens\":8192," +
+            "\"temperature\":0.9}";
+
+            LogManager.Log($"Sending request json:{json}");
+
             return json;
 
         }
