@@ -27,9 +27,9 @@ namespace LivingStoryteller
             var content = new StringContent(json, Encoding.UTF8, "application/json");
             var url = ModOptions.Settings.TTSEndpoint;
             httpClient.DefaultRequestHeaders.Clear();
-            httpClient.DefaultRequestHeaders.Add("Authorization", "Bearer " + ModOptions.Settings.ApiKey);
+            httpClient.DefaultRequestHeaders.Add("Authorization", "Bearer " + ModOptions.Settings.EffectiveTTSApiKey);
                 LogManager.Log($"[TTS] Making request to OpenAI TTS endpoint: {url}: with content: {json}");
-            using (var resp = await httpClient.PostAsync(ModOptions.Settings.Endpoint, content))
+            using (var resp = await httpClient.PostAsync(url, content))
             {
                 resp.EnsureSuccessStatusCode();
                 string responseBody = await resp.Content.ReadAsStringAsync();

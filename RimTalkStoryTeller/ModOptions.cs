@@ -141,7 +141,7 @@ namespace LivingStoryteller
 
                 listing.Gap();
                 listing.Label("TTS API Key:");
-                Settings.TTSApiKey = listing.TextEntry(Settings.TTSApiKey ?? Settings.ApiKey);
+                Settings.TTSApiKey = listing.TextEntry(string.IsNullOrWhiteSpace(Settings.TTSApiKey) ? Settings.ApiKey : Settings.TTSApiKey);
 
             }
 

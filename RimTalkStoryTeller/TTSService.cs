@@ -110,10 +110,11 @@ namespace LivingStoryteller
         {
             LogManager.Log("[TTS] RequestSpeech called. Text length = " + text.Length + ", PersonaDefName = " + PersonaDefName);
             var settings = ModOptions.Settings;
+            var ttsApiKey = settings.EffectiveTTSApiKey;
 
-            if (settings.ApiKey.NullOrEmpty())
+            if (ttsApiKey.NullOrEmpty())
             {
-                LogManager.Warning("[LivingStoryteller][TTS] No API key for TTS.");
+                LogManager.Warning("[LivingStoryteller][TTS] No TTS API key available. Set TTS API Key or API Key in mod settings.");
                 return;
             }
 
@@ -123,7 +124,7 @@ namespace LivingStoryteller
             {
                 try
                 {
-                    TTSResponseData pcm = await CallTTSAPIAsync(settings.ApiKey, PersonaDefName, text, emotion, mood);
+                    TTSResponseData pcm = await CallTTSAPIAsync(ttsApiKey, PersonaDefName, text, emotion, mood);
 
                     if (pcm != null && pcm.Data.Length > 0)
                     {

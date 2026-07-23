@@ -14,7 +14,7 @@ namespace LivingStoryteller
         {
             // 1. Separate the base endpoint URL from the API key
             var baseUrl = ModOptions.Settings.TTSEndpoint; // e.g., "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent"
-            var apiKey = ModOptions.Settings.ApiKey;
+            var apiKey = ModOptions.Settings.EffectiveTTSApiKey;
 
             LogManager.Log($"[TTS] Making request to Google TTS endpoint: {baseUrl}. Payload length = {json?.Length ?? 0}");
 

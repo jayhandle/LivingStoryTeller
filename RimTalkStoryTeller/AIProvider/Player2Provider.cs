@@ -60,7 +60,7 @@ namespace LivingStoryteller
             var url = ModOptions.Settings.TTSEndpoint;
             LogManager.Log($"[TTS] Making request to Player2 TTS endpoint: {url}: with content: {json}");
             httpClient.DefaultRequestHeaders.Clear();
-            httpClient.DefaultRequestHeaders.Add("Authorization", "Bearer " + ModOptions.Settings.ApiKey);
+            httpClient.DefaultRequestHeaders.Add("Authorization", "Bearer " + ModOptions.Settings.EffectiveTTSApiKey);
             httpClient.DefaultRequestHeaders.Add("Content-Type", "application/json");
             using (var resp = await httpClient.PostAsync(url, content))
             {

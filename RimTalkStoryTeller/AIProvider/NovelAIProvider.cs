@@ -38,7 +38,7 @@ namespace LivingStoryteller
             var content = new StringContent(json, Encoding.UTF8, "application/json");
             var url = ModOptions.Settings.TTSEndpoint;
             httpClient.DefaultRequestHeaders.Clear();
-            httpClient.DefaultRequestHeaders.Add("Authorization", "Bearer " + ModOptions.Settings.ApiKey);
+            httpClient.DefaultRequestHeaders.Add("Authorization", "Bearer " + ModOptions.Settings.EffectiveTTSApiKey);
             LogManager.Log($"[TTS] Making request to NovelAI TTS endpoint: {url}: with content: {json}");
             using (var resp = await httpClient.PostAsync(url, content))
             {

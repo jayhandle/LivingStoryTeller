@@ -44,12 +44,14 @@ namespace LivingStoryteller
         public float Sympathy = 0f;      // rises with pawn deaths, mental breaks
         public float Confidence = 0f;    // rises with wealth, victories, growth
 
+        public string EffectiveTTSApiKey => string.IsNullOrWhiteSpace(TTSApiKey) ? ApiKey : TTSApiKey;
+
         public override void ExposeData()
         {
             Scribe_Values.Look(ref ApiKey, "apiKey", "");
             Scribe_Values.Look(ref TTSApiKey, "ttsApiKey", "");
             Scribe_Values.Look(ref ProviderName, "providerName", AIProvider.google);
-            Scribe_Values.Look(ref TTSProviderName, "providerName", AIProvider.google);
+            Scribe_Values.Look(ref TTSProviderName, "ttsProviderName", AIProvider.google);
             Scribe_Values.Look(ref ModelName, "modelName", "");
             Scribe_Values.Look(ref Endpoint, "endpoint", "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions");
             Scribe_Values.Look(ref TTSEnabled, "TTSEnabled", true);
