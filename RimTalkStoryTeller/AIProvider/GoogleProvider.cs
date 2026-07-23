@@ -188,9 +188,17 @@ namespace LivingStoryteller
             var client = httpClient;
             client.Timeout = TimeSpan.FromSeconds(30);
 
-            // Clear headers and set the Google-specific API key header
+            // Use auth header style expected by the target endpoint.
+            bool useOpenAiCompat = endpoint.IndexOf("/openai/", StringComparison.OrdinalIgnoreCase) >= 0;
             client.DefaultRequestHeaders.Clear();
-            client.DefaultRequestHeaders.Add("x-goog-api-key", apiKey);
+            if (useOpenAiCompat)
+            {
+                client.DefaultRequestHeaders.Add("Authorization", "Bearer " + apiKey);
+            }
+            else
+            {
+                client.DefaultRequestHeaders.Add("x-goog-api-key", apiKey);
+            }
 
             var content = new StringContent(json, Encoding.UTF8, "application/json");
 
@@ -198,6 +206,8 @@ namespace LivingStoryteller
             {
                 using (var resp = await client.PostAsync(endpoint, content))
                 {
+                    string responseBody = await resp.Content.ReadAsStringAsync();
+
                     // Catch 429 specifically for HttpClient (PostAsync throws HttpRequestException, not WebException)
                     if (resp.StatusCode == (HttpStatusCode)429)
                     {
@@ -205,9 +215,19 @@ namespace LivingStoryteller
                         return null;
                     }
 
-                    resp.EnsureSuccessStatusCode();
+                    if (!resp.IsSuccessStatusCode)
+                    {
+                        string preview = responseBody.Length > 1000
+                            ? responseBody.Substring(0, 1000) + "..."
+                            : responseBody;
 
-                    string responseBody = await resp.Content.ReadAsStringAsync();
+                        LogManager.Error("[LivingStoryteller] Chat API request failed. Status=" + resp.StatusCode +
+                            ", endpoint=" + endpoint +
+                            ", authMode=" + (useOpenAiCompat ? "Authorization Bearer" : "x-goog-api-key") +
+                            ", body preview=" + preview);
+
+                        resp.EnsureSuccessStatusCode();
+                    }
 
                     // Debug logging
                     string preview = responseBody.Length > 500
@@ -231,10 +251,8 @@ namespace LivingStoryteller
             string json =
             "{\"model\":\"" + EscapeJson(model) + "\"," +
             "\"messages\":[" +
-            "{\"role\":\"system\",\"content\":\"" +
-            EscapeJson(systemPrompt) + "\"}," +
-            "{\"role\":\"user\",\"content\":\"{" +
-            EscapeJson(userMessage) + "\"}" +
+            "{\"role\":\"system\",\"content\":\"" + EscapeJson(systemPrompt) + "\"}," +
+            "{\"role\":\"user\",\"content\":\"" + EscapeJson(userMessage) + "\"}" +
             "]," +
             "\"max_tokens\":8192," +
             "\"temperature\":0.9}";

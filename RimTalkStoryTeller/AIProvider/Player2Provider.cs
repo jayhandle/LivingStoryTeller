@@ -74,19 +74,13 @@ namespace LivingStoryteller
 
         public string JSONRequest(string model, string systemPrompt, string userMessage)
         {
-            var json = $@"{{
-    ""messages"": [
-        {{
-            ""content"": ""{systemPrompt}"",
-            ""role"": ""system""
-        }},
-        {{
-            ""content"": ""{userMessage}"",
-            ""role"": ""user""
-        }}
-    ],
-    ""stream"": false
-}}";
+            var json =
+                "{\"model\":\"" + EscapeJson(model) + "\"," +
+                "\"messages\":[" +
+                "{\"role\":\"system\",\"content\":\"" + EscapeJson(systemPrompt) + "\"}," +
+                "{\"role\":\"user\",\"content\":\"" + EscapeJson(userMessage) + "\"}" +
+                "]," +
+                "\"stream\":false}";
             return json;
         }
 
@@ -191,6 +185,17 @@ namespace LivingStoryteller
 
             return result;
 
+        }
+
+        private static string EscapeJson(string s)
+        {
+            if (string.IsNullOrEmpty(s)) return "";
+            return s
+                .Replace("\\", "\\\\")
+                .Replace("\"", "\\\"")
+                .Replace("\n", "\\n")
+                .Replace("\r", "\\r")
+                .Replace("\t", "\\t");
         }
 
     }

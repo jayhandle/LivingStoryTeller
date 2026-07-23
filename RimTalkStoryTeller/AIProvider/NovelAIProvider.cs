@@ -1,5 +1,4 @@
-﻿using Newtonsoft.Json;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
@@ -92,15 +91,13 @@ namespace LivingStoryteller
         public string JSONRequest(string model, string systemPrompt, string userMessage)
         {
             string json =
-            "{\"model\":\"" + EscapeJson(model) + "\"," +
-            "\"messages\":[" +
-            "{\"role\":\"system\",\"content\":\"" +
-            EscapeJson(systemPrompt) + "\"}," +
-            "{\"role\":\"user\",\"content\":\"{" +
-            EscapeJson(userMessage) + "\"}" +
-            "]," +
-            "\"max_tokens\":8192," +
-            "\"temperature\":0.9}";
+                "{\"model\":\"" + EscapeJson(model) + "\"," +
+                "\"messages\":[" +
+                "{\"role\":\"system\",\"content\":\"" + EscapeJson(systemPrompt) + "\"}," +
+                "{\"role\":\"user\",\"content\":\"" + EscapeJson(userMessage) + "\"}" +
+                "]," +
+                "\"max_tokens\":8192," +
+                "\"temperature\":0.9}";
 
             LogManager.Log($"Sending request json:{json}");
 

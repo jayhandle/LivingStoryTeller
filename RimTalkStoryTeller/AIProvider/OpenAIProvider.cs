@@ -1,5 +1,4 @@
-﻿using Newtonsoft.Json;
-using System.Net;
+﻿using System.Net;
 using System.Net.Http;
 using System.Text;
 
@@ -11,14 +10,10 @@ namespace LivingStoryteller
 
         public string JSONTTSRequest(string text, string personaDef, string voiceType, string emotion, string mood)
         {
-            var json = new
-            {
-                model = ModOptions.Settings.TTSModelName,
-                voice = voiceType,
-                input = text,
-            };
-
-            string jsonString = JsonConvert.SerializeObject(json);
+            string jsonString =
+                "{\"model\":\"" + EscapeJson(ModOptions.Settings.TTSModelName) + "\"," +
+                "\"voice\":\"" + EscapeJson(voiceType ?? string.Empty) + "\"," +
+                "\"input\":\"" + EscapeJson(text) + "\"}";
             return jsonString;
         }
 
@@ -88,15 +83,13 @@ namespace LivingStoryteller
         public string JSONRequest(string model, string systemPrompt, string userMessage)
         {
             string json =
-            "{\"model\":\"" + EscapeJson(model) + "\"," +
-            "\"messages\":[" +
-            "{\"role\":\"system\",\"content\":\"" +
-            EscapeJson(systemPrompt) + "\"}," +
-            "{\"role\":\"user\",\"content\":\"{" +
-            EscapeJson(userMessage) + "\"}" +
-            "]," +
-            "\"max_tokens\":8192," +
-            "\"temperature\":0.9}";
+                "{\"model\":\"" + EscapeJson(model) + "\"," +
+                "\"messages\":[" +
+                "{\"role\":\"system\",\"content\":\"" + EscapeJson(systemPrompt) + "\"}," +
+                "{\"role\":\"user\",\"content\":\"" + EscapeJson(userMessage) + "\"}" +
+                "]," +
+                "\"max_tokens\":8192," +
+                "\"temperature\":0.9}";
 
             LogManager.Log($"Sending request json:{json}");
 
