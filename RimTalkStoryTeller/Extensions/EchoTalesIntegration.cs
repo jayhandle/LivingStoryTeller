@@ -79,8 +79,7 @@ namespace LivingStoryteller
             LogManager.Log("[EchoTales] Probe start. day=" + currentDay +
                 ", ticks=" + ticksGame +
                 ", readEveryNewEntry=" + readEveryNewEntry +
-                ", lastCommentDay=" + LivingStoryTeller.LivingStorytellerTicksComponent.LastEchoTalesCommentDay +
-                ", lastSignature=" + ShortSignature(LivingStoryTeller.LivingStorytellerTicksComponent.LastEchoTalesTaleSignature));
+                ", lastCommentDay=" + LivingStoryTeller.LivingStorytellerTicksComponent.LastEchoTalesCommentDay );
             
             if (!TryGetLatestTale(out var taleText, out var taleDay))
             {
@@ -94,7 +93,7 @@ namespace LivingStoryteller
                 return;
             }
 
-            if (taleDay.HasValue && taleDay.Value < ticksGame)
+            if (taleDay.HasValue && taleDay.Value <= ticksGame)
             {
                 LogManager.Log("[EchoTales] Skip: latest tale is from a previous day. taleDay=" + taleDay.Value + ", currentDay=" + currentDay);
                 return;
