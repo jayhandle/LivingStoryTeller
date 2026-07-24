@@ -3,6 +3,7 @@ using System.Collections;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using Verse;
+using EchoTales;
 
 namespace LivingStoryteller
 {
@@ -15,6 +16,27 @@ namespace LivingStoryteller
         private static bool loggedIntegrationDisabled;
         private static bool loggedModInactive;
         private static bool loggedComponentSchema;
+        private static bool? _isAvailable;
+
+        public static bool IsAvailable
+        {
+            get
+            {
+                if (!_isAvailable.HasValue)
+                {
+                    _isAvailable =
+                        ModLister.GetActiveModWithIdentifier(
+                            EchoTalesPackageId) != null;
+
+                    if (_isAvailable.Value)
+                    {
+                        LogManager.Log(
+                            "EchoTales Detected");
+                    }
+                }
+                return _isAvailable.Value;
+            }
+        }
 
         public static void TryProcessDailyTale()
         {
@@ -46,28 +68,6 @@ namespace LivingStoryteller
             int currentDay = GenDate.DaysPassed;
             bool readEveryNewEntry = ModOptions.Settings.EchoTalesReadEveryNewEntry;
 
-            LogManager.Log("[EchoTales] Probe start. day=" + currentDay +
-                ", ticks=" + ticksGame +
-                ", readEveryNewEntry=" + readEveryNewEntry +
-                ", lastCommentDay=" + LivingStoryTeller.LivingStorytellerTicksComponent.LastEchoTalesCommentDay +
-                ", lastSignature=" + ShortSignature(LivingStoryTeller.LivingStorytellerTicksComponent.LastEchoTalesTaleSignature));
-
-            if (!ModsConfig.IsActive(EchoTalesPackageId))
-            {
-                if (!loggedModInactive)
-                {
-                    LogManager.Log("[EchoTales] EchoTales mod is not active (expected packageId: " + EchoTalesPackageId + ").");
-                    loggedModInactive = true;
-                }
-                return;
-            }
-
-            if (loggedModInactive)
-            {
-                LogManager.Log("[EchoTales] EchoTales mod detected as active.");
-                loggedModInactive = false;
-            }
-
             if (!readEveryNewEntry &&
                 currentDay <= LivingStoryTeller.LivingStorytellerTicksComponent.LastEchoTalesCommentDay)
             {
@@ -76,7 +76,13 @@ namespace LivingStoryteller
                 return;
             }
 
-            if (!TryGetLatestTale(out var taleText, out var signature, out var taleDay))
+            LogManager.Log("[EchoTales] Probe start. day=" + currentDay +
+                ", ticks=" + ticksGame +
+                ", readEveryNewEntry=" + readEveryNewEntry +
+                ", lastCommentDay=" + LivingStoryTeller.LivingStorytellerTicksComponent.LastEchoTalesCommentDay +
+                ", lastSignature=" + ShortSignature(LivingStoryTeller.LivingStorytellerTicksComponent.LastEchoTalesTaleSignature));
+            
+            if (!TryGetLatestTale(out var taleText, out var taleDay))
             {
                 LogManager.Log("[EchoTales] Skip: probe could not retrieve a latest tale entry.");
                 return;
@@ -88,16 +94,9 @@ namespace LivingStoryteller
                 return;
             }
 
-            if (taleDay.HasValue && taleDay.Value < currentDay)
+            if (taleDay.HasValue && taleDay.Value < ticksGame)
             {
                 LogManager.Log("[EchoTales] Skip: latest tale is from a previous day. taleDay=" + taleDay.Value + ", currentDay=" + currentDay);
-                return;
-            }
-
-            if (!signature.NullOrEmpty() &&
-                signature == LivingStoryTeller.LivingStorytellerTicksComponent.LastEchoTalesTaleSignature)
-            {
-                LogManager.Log("[EchoTales] Skip: tale signature matches last processed entry. signature=" + ShortSignature(signature));
                 return;
             }
 
@@ -108,33 +107,28 @@ namespace LivingStoryteller
                 return;
             }
 
-            string trimmedTale = taleText.Length > 1200 ? taleText.Substring(0, 1200) : taleText;
             string eventName = "{" +
                 "\"event\":\"EchoTalesDailyEntry\"," +
                 "\"category\":\"EchoTales\"," +
                 "\"day\":\"" + currentDay + "\"," +
-                "\"tale\":\"" + EscapeJson(trimmedTale) + "\"," +
-                "\"prompt\":\"Read the EchoTales entry for today and comment on it in character.\"" +
+                "\"entry\":\"" + EscapeJson(taleText) + "\"," +
+                "\"prompt\":\"Make a comment about the day's entry.\"" +
                 "}";
 
             LogManager.Log("[EchoTales] Daily tale accepted. day=" + currentDay +
-                ", taleDay=" + (taleDay.HasValue ? taleDay.Value.ToString() : "null") +
-                ", signature=" + ShortSignature(signature) +
+                ", taleDay=" + (taleDay?.ToString()) +
                 ", taleLength=" + taleText.Length +
                 ". Requesting storyteller commentary.");
             RequestNarration.Request(eventName, "EchoTales");
 
             LivingStoryTeller.LivingStorytellerTicksComponent.LastEchoTalesCommentDay = currentDay;
-            LivingStoryTeller.LivingStorytellerTicksComponent.LastEchoTalesTaleSignature = signature ?? string.Empty;
 
-            LogManager.Log("[EchoTales] State updated. lastCommentDay=" + currentDay +
-                ", lastSignature=" + ShortSignature(LivingStoryTeller.LivingStorytellerTicksComponent.LastEchoTalesTaleSignature));
+            LogManager.Log("[EchoTales] State updated. lastCommentDay=" + currentDay);
         }
 
-        private static bool TryGetLatestTale(out string taleText, out string signature, out int? taleDay)
+        private static bool TryGetLatestTale(out string taleText, out int? taleDay)
         {
             taleText = string.Empty;
-            signature = string.Empty;
             taleDay = null;
 
             try
@@ -148,28 +142,28 @@ namespace LivingStoryteller
                     return false;
                 }
 
-                var gameComponent = GetEchoTalesGameComponent(echoAssembly);
-                if (gameComponent == null)
+                EchoStoryMemory storyMemory = (EchoStoryMemory)GetEchoStoryMemory(echoAssembly);
+                if (storyMemory == null)
                 {
-                    LogManager.Log("[EchoTales] Probe detail: EchoTales game component was not found in Current.Game.components.");
+                    LogManager.Log("[EchoTales] storyMemory not found.");
                     return false;
+                   // storyMemory = gameComponent;
                 }
-
-                var entry = GetLatestEntryFromComponent(gameComponent);
+                LogManager.Log("[EchoTales] storyMemory found: " + storyMemory.SavedEntries.Count());
+                var entries = storyMemory.SavedEntries;
+                var entry = entries.Last();
+                
                 if (entry == null)
                 {
                     LogManager.Log("[EchoTales] Probe detail: no latest entry found in EchoTales component entries collection.");
                     return false;
                 }
 
-                taleText = ReadEntryText(entry);
-                signature = ReadEntrySignature(entry, taleText);
-                taleDay = ReadEntryDay(entry);
-                LogManager.Log("[EchoTales] Probe detail: extracted latest entry. taleDay=" +
-                    (taleDay.HasValue ? taleDay.Value.ToString() : "null") +
-                    ", signature=" + ShortSignature(signature) +
-                    ", taleLength=" + (taleText?.Length ?? 0));
-                return !taleText.NullOrEmpty();
+                LogManager.Log($"[EchoTales] Probe detail: latest entry found. Tick:{taleDay}:  entryText: " + entry.Text);
+
+                taleDay = entry.Ticks;
+                taleText = entry.Text;
+                return !string.IsNullOrWhiteSpace(taleText); 
             }
             catch (Exception ex)
             {
@@ -187,6 +181,26 @@ namespace LivingStoryteller
                 return null;
 
             return Current.Game.components.FirstOrDefault(c => c != null && componentType.IsInstanceOfType(c));
+        }
+
+        private static object GetEchoStoryMemory(Assembly echoAssembly)
+        {
+            var memoryType = echoAssembly.GetType("EchoTales.EchoStoryMemory", false, true);
+            if (memoryType == null)
+                return null;
+
+            var instanceProperty = memoryType.GetProperty("Instance", BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
+            if (instanceProperty == null)
+                return null;
+
+            try
+            {
+                return instanceProperty.GetValue(null);
+            }
+            catch
+            {
+                return null;
+            }
         }
 
         private static object GetLatestEntryFromComponent(object component)
@@ -234,6 +248,15 @@ namespace LivingStoryteller
                 LogManager.Log("[EchoTales] Probe detail: heuristic entry discovery succeeded via " + sourcePath + ".");
                 return fallbackEntry;
             }
+
+            var broadEntry = TryFindAnyEnumerableEntryFromComponent(component, out var broadSourcePath);
+            if (broadEntry != null)
+            {
+                LogManager.Log("[EchoTales] Probe detail: broad enumerable discovery succeeded via " + broadSourcePath + ".");
+                return broadEntry;
+            }
+
+            LogManager.Log("[EchoTales] Probe detail: no enumerable entry candidate could be extracted from the component.");
 
             return null;
         }
@@ -399,6 +422,74 @@ namespace LivingStoryteller
             return null;
         }
 
+        private static object TryFindAnyEnumerableEntryFromComponent(object root, out string sourcePath)
+        {
+            sourcePath = string.Empty;
+
+            if (root == null)
+                return null;
+
+            var visited = new HashSet<int>();
+            var queue = new Queue<(object node, int depth, string path)>();
+            queue.Enqueue((root, 0, "component"));
+
+            while (queue.Count > 0)
+            {
+                var (node, depth, path) = queue.Dequeue();
+                if (node == null)
+                    continue;
+
+                int id = RuntimeHelpers.GetHashCode(node);
+                if (!visited.Add(id))
+                    continue;
+
+                if (depth > 4)
+                    continue;
+
+                foreach (var member in GetReadableMembers(node.GetType()))
+                {
+                    if (!TryReadMember(node, member, out var value) || value == null)
+                        continue;
+
+                    string memberPath = path + "." + member.Name;
+
+                    if (value is IEnumerable enumerable && value is not string)
+                    {
+                        string summary = DescribeEnumerable(enumerable);
+                        LogManager.Log("[EchoTales] Probe detail: enumerable member " + memberPath + " => " + summary);
+
+                        var last = GetLastFromEnumerable(enumerable);
+                        if (last != null)
+                        {
+                            if (last is string || !IsSimpleType(last.GetType()))
+                            {
+                                sourcePath = memberPath;
+                                return last;
+                            }
+                        }
+
+                        if (depth < 4)
+                        {
+                            foreach (var item in enumerable)
+                            {
+                                if (item == null || item is string || IsSimpleType(item.GetType()))
+                                    continue;
+
+                                queue.Enqueue((item, depth + 1, memberPath + "[]"));
+                                break;
+                            }
+                        }
+                    }
+                    else if (!IsSimpleType(value.GetType()) && depth < 4)
+                    {
+                        queue.Enqueue((value, depth + 1, memberPath));
+                    }
+                }
+            }
+
+            return null;
+        }
+
         private static bool LooksLikeEchoTalesEntry(object candidate)
         {
             if (candidate == null)
@@ -436,7 +527,7 @@ namespace LivingStoryteller
                         }
                         else if (value is IEnumerable)
                         {
-                            details = "enumerable(" + value.GetType().Name + ")";
+                            details = DescribeEnumerable((IEnumerable)value);
                         }
                         else
                         {
@@ -451,6 +542,24 @@ namespace LivingStoryteller
             {
                 LogManager.Warning("[EchoTales] Failed to log component schema: " + ex.Message);
             }
+        }
+
+        private static string DescribeEnumerable(IEnumerable enumerable)
+        {
+            if (enumerable == null)
+                return "enumerable(null)";
+
+            int count = -1;
+            if (enumerable is ICollection collection)
+                count = collection.Count;
+
+            object last = GetLastFromEnumerable(enumerable);
+            string lastType = last == null ? "null" : last.GetType().Name;
+
+            if (count >= 0)
+                return "enumerable(" + enumerable.GetType().Name + ", count=" + count + ", lastType=" + lastType + ")";
+
+            return "enumerable(" + enumerable.GetType().Name + ", lastType=" + lastType + ")";
         }
 
         private static IEnumerable<MemberInfo> GetReadableMembers(Type type)

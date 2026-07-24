@@ -32,7 +32,7 @@ namespace LivingStoryTeller
             if (Find.TickManager.TicksGame % 60 == 0)
             {
                 MemoryManager.Tick();
-                EchoTalesIntegration.TryProcessDailyTale();
+                if(EchoTalesIntegration.IsAvailable) EchoTalesIntegration.TryProcessDailyTale();
             }
         }
 
