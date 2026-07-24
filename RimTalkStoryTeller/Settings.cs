@@ -22,10 +22,10 @@ namespace LivingStoryteller
         public AIProvider ProviderName = AIProvider.google;
         public AIProvider TTSProviderName = AIProvider.google;
         public string ModelName = "gemini-2.5-flash";
-        public string Endpoint = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions";
+        public string Endpoint = "https://generativelanguage.googleapis.com/v1beta/interactions";
         public bool TTSEnabled = true;
         public string TTSModelName = "gemini-2.5-flash-tts";
-        public string TTSEndpoint = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=";
+        public string TTSEndpoint = "https://generativelanguage.googleapis.com/v1beta/interactions";
         public string PersonaText = "The player is running a colony and you are the storyteller controlling events. " +
             "An event just occurred. Respond in character in 2-4 sentences. Address the player directly. " +
             "Do not use quotation marks around your response. Keep the narration concise, ideally under 100 words. " +
@@ -53,7 +53,7 @@ namespace LivingStoryteller
             Scribe_Values.Look(ref ProviderName, "providerName", AIProvider.google);
             Scribe_Values.Look(ref TTSProviderName, "ttsProviderName", AIProvider.google);
             Scribe_Values.Look(ref ModelName, "modelName", "");
-            Scribe_Values.Look(ref Endpoint, "endpoint", "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions");
+            Scribe_Values.Look(ref Endpoint, "endpoint", "https://generativelanguage.googleapis.com/v1beta/interactions");
             Scribe_Values.Look(ref TTSEnabled, "TTSEnabled", true);
             Scribe_Values.Look(ref TTSModelName, "ttsModelName", "gemini-2.5-flash-preview-tts");
             Scribe_Values.Look(ref TTSEndpoint, "ttsEndpoint", "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=");

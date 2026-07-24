@@ -353,9 +353,9 @@ namespace LivingStoryteller
                     Settings.TTSProviderName = StorytellerSettings.AIProvider.novel_ai;
                     break;
                 default:
-                    Settings.Endpoint = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions";
+                    Settings.Endpoint = "https://generativelanguage.googleapis.com/v1beta/interactions";
                     Settings.TTSModelName = "gemini-2.5-flash-preview-tts";
-                    Settings.TTSEndpoint = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=";
+                    Settings.TTSEndpoint = "https://generativelanguage.googleapis.com/v1beta/interactions";
                     Settings.ModelName = "gemini-2.5-flash";
                     Settings.ProviderName = StorytellerSettings.AIProvider.google;
                     Settings.TTSProviderName = StorytellerSettings.AIProvider.google;

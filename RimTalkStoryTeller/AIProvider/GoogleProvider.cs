@@ -1,5 +1,4 @@
-﻿using Google.GenAI.Types;
-using System.Net;
+﻿using System.Net;
 using System.Net.Http;
 using System.Text;
 
@@ -13,60 +12,74 @@ namespace LivingStoryteller
         public async Task<TTSResponseData> GetTTSResponse(string json)
         {
             // 1. Separate the base endpoint URL from the API key
-            var baseUrl = ModOptions.Settings.TTSEndpoint; // e.g., "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent"
+            var baseUrl = ModOptions.Settings.TTSEndpoint;
             var apiKey = ModOptions.Settings.EffectiveTTSApiKey;
 
             LogManager.Log($"[TTS] Making request to Google TTS endpoint: {baseUrl}. Payload length = {json?.Length ?? 0}");
 
             for (int attempt = 1; attempt <= MaxTtsAttempts; attempt++)
             {
-                // 2. Use HttpRequestMessage to explicitly configure headers per request
-                using (var request = new HttpRequestMessage(HttpMethod.Post, baseUrl))
+                if (string.IsNullOrEmpty(apiKey))
                 {
-                    // Clear any lingering Bearer/OAuth authorization headers on the request
-                    request.Headers.Authorization = null;
-
-                    // Set the Google API Key header explicitly
-                    request.Headers.Add("x-goog-api-key", apiKey);
-
-                    // Attach the JSON payload
-                    request.Content = new StringContent(json, Encoding.UTF8, "application/json");
-
-                    using (var resp = await httpClient.SendAsync(request))
-                    {
-                        if (resp.StatusCode == (HttpStatusCode)429)
-                        {
-                            string errorBody = await resp.Content.ReadAsStringAsync();
-
-                            if (attempt == MaxTtsAttempts)
-                            {
-                                LogManager.Error("[TTS] Google rate limit reached after retries. " +
-                                    "Last status: 429, body preview: " + MakePreview(errorBody, 500));
-                                throw new HttpRequestException("Google TTS rate limited (429) after retries.");
-                            }
-
-                            var delay = GetRetryDelay(resp, attempt);
-                            LogManager.Warning($"[TTS] Google TTS rate limited (429). " +
-                                $"Retrying in {(int)delay.TotalMilliseconds}ms (attempt {attempt}/{MaxTtsAttempts}).");
-                            await Task.Delay(delay);
-                            continue;
-                        }
-
-                        if (!resp.IsSuccessStatusCode)
-                        {
-                            string errorBody = await resp.Content.ReadAsStringAsync();
-                            LogManager.Error("[TTS] Google TTS request failed. Status: " + resp.StatusCode +
-                                ", body preview: " + MakePreview(errorBody, 500));
-                            resp.EnsureSuccessStatusCode();
-                        }
-
-                        string responseBody = await resp.Content.ReadAsStringAsync();
-                        LogManager.Log("[TTS] responseBody status code = " + resp.StatusCode);
-                        var pcmData = ExtractInlinePCM(responseBody);
-
-                        return new TTSResponseData(pcmData);
-                    }
+                    LogManager.Error("[TTS] Google TTS API key is null or empty. Please set a valid API key in the mod settings.");
+                    throw new InvalidOperationException("Google TTS API key is required but not provided.");
                 }
+
+                // Clear any lingering Bearer/OAuth authorization headers on the request
+                var client = httpClient;
+                client.Timeout = TimeSpan.FromSeconds(30);
+
+                // Use auth header style expected by the target endpoint.
+                bool useOpenAiCompat = baseUrl.IndexOf("/openai/", StringComparison.OrdinalIgnoreCase) >= 0;
+                client.DefaultRequestHeaders.Clear();
+                if (useOpenAiCompat)
+                {
+                    client.DefaultRequestHeaders.Add("Authorization", "Bearer " + apiKey);
+                }
+                else
+                {
+                    client.DefaultRequestHeaders.Add("x-goog-api-key", apiKey);
+                }
+
+                var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+                // Attach the JSON payload
+
+                using (var resp = await client.PostAsync(baseUrl, content))
+                {
+                    if (resp.StatusCode == (HttpStatusCode)429)
+                    {
+                        string errorBody = await resp.Content.ReadAsStringAsync();
+
+                        if (attempt == MaxTtsAttempts)
+                        {
+                            LogManager.Error("[TTS] Google rate limit reached after retries. " +
+                                "Last status: 429, body preview: " + MakePreview(errorBody, 500));
+                            throw new HttpRequestException("Google TTS rate limited (429) after retries.");
+                        }
+
+                        var delay = GetRetryDelay(resp, attempt);
+                        LogManager.Warning($"[TTS] Google TTS rate limited (429). " +
+                            $"Retrying in {(int)delay.TotalMilliseconds}ms (attempt {attempt}/{MaxTtsAttempts}).");
+                        await Task.Delay(delay);
+                        continue;
+                    }
+
+                    if (!resp.IsSuccessStatusCode)
+                    {
+                        string errorBody = await resp.Content.ReadAsStringAsync();
+                        LogManager.Error("[TTS] Google TTS request failed. Status: " + resp.StatusCode +
+                            ", body preview: " + MakePreview(errorBody, 5000));
+                        resp.EnsureSuccessStatusCode();
+                    }
+
+                    string responseBody = await resp.Content.ReadAsStringAsync();
+                    LogManager.Log("[TTS] responseBody status code = " + resp.StatusCode);
+                    var pcmData = ExtractInlinePCM(responseBody);
+
+                    return new TTSResponseData(pcmData);
+                }
+
             }
 
             throw new HttpRequestException("Google TTS request did not complete successfully.");
@@ -93,24 +106,6 @@ namespace LivingStoryteller
             return TimeSpan.FromMilliseconds(delayMs);
         }
 
-        private static string MaskApiKeyInUrl(string url)
-        {
-            if (string.IsNullOrEmpty(url))
-                return "";
-
-            const string keyToken = "key=";
-            int keyIdx = url.IndexOf(keyToken, StringComparison.OrdinalIgnoreCase);
-            if (keyIdx < 0)
-                return url;
-
-            int valueStart = keyIdx + keyToken.Length;
-            int valueEnd = url.IndexOf('&', valueStart);
-            if (valueEnd < 0)
-                valueEnd = url.Length;
-
-            return url.Substring(0, valueStart) + "***" + url.Substring(valueEnd);
-        }
-
         private static string MakePreview(string text, int maxLen)
         {
             if (string.IsNullOrEmpty(text))
@@ -121,8 +116,9 @@ namespace LivingStoryteller
 
         private static byte[] ExtractInlinePCM(string responseBody)
         {
+            LogManager.Log("[TTS] ExtractInlinePCM called. Response body length = " + responseBody.Length);
             // Find "inlineData"
-            int inlineIdx = responseBody.IndexOf("\"inlineData\"");
+            int inlineIdx = responseBody.IndexOf("\"content\"");
             if (inlineIdx < 0)
                 return null;
 
@@ -147,30 +143,38 @@ namespace LivingStoryteller
 
         public string JSONTTSRequest(string text, string personaDef, string voice, string emotion, string mood)
         {
-            var promptBuilder = $"{StorytellerPersonaDatabase.GetPersonaText(personaDef)}.";
-            if (ModOptions.Settings.UseAccent) promptBuilder += $" Your accent is {StorytellerPersonaDatabase.GetAccent(personaDef)}.";
-            if (ModOptions.Settings.UseEmotion) promptBuilder += $" Your emotional tone is {emotion}. Your mood is {mood}";
+            // Strip newlines and carriage returns directly
+            var cleanPersona = (StorytellerPersonaDatabase.GetPersonaText(personaDef) ?? "")
+                .Replace("\r", " ")
+                .Replace("\n", "");
 
-            string json =
-                $@"{{""contents"":
-                    [
-                        {{""parts"":
-                            [{{""text"": ""{promptBuilder}. Say:{text}""
-                            }}]
-                        }}
-                    ],
-                    ""generationConfig"": 
-                    {{ ""responseModalities"":[""AUDIO""], 
-                        ""speechConfig"": 
-                        {{""voiceConfig"": 
-                            {{ ""prebuiltVoiceConfig"": 
-                                {{ ""voiceName"": ""{voice}"" 
-                                }}
-                            }}
-                        }}
-                    }},
-                ""model"":""{ModOptions.Settings.TTSModelName}""
-                }}";
+            var cleanText = text.Replace("\r", " ").Replace("\n", "");
+
+            var promptBuilder = cleanPersona;
+            if (!promptBuilder.EndsWith(".")) promptBuilder += ".";
+
+            if (ModOptions.Settings.UseAccent)
+                promptBuilder += $" Your accent is {StorytellerPersonaDatabase.GetAccent(personaDef)}.";
+
+            if (ModOptions.Settings.UseEmotion)
+                promptBuilder += $" Your emotional tone is {emotion}. Your mood is {mood}.";
+
+            // Escape interior quotes to safeguard JSON structure
+            promptBuilder = promptBuilder.Replace("\"", "\\\"");
+            cleanText = cleanText.Replace("\"", "\\\"");
+
+            string json = $@"{{
+    ""model"": ""{ModOptions.Settings.TTSModelName}"",
+    ""input"": ""{promptBuilder} Say: {cleanText}"",
+    ""response_format"": {{
+        ""type"": ""audio""
+    }},
+    ""generation_config"": {{
+      ""speech_config"": [
+        {{ ""voice"": ""{voice}"" }}
+      ]
+    }}    
+}}";
             return json;
         }
 
@@ -217,14 +221,14 @@ namespace LivingStoryteller
 
                     if (!resp.IsSuccessStatusCode)
                     {
-                        string preview = responseBody.Length > 1000
+                        string errorPreview = responseBody.Length > 1000
                             ? responseBody.Substring(0, 1000) + "..."
                             : responseBody;
 
                         LogManager.Error("[LivingStoryteller] Chat API request failed. Status=" + resp.StatusCode +
                             ", endpoint=" + endpoint +
                             ", authMode=" + (useOpenAiCompat ? "Authorization Bearer" : "x-goog-api-key") +
-                            ", body preview=" + preview);
+                            ", body preview=" + errorPreview);
 
                         resp.EnsureSuccessStatusCode();
                     }
@@ -250,12 +254,11 @@ namespace LivingStoryteller
         {
             string json =
             "{\"model\":\"" + EscapeJson(model) + "\"," +
-            "\"messages\":[" +
-            "{\"role\":\"system\",\"content\":\"" + EscapeJson(systemPrompt) + "\"}," +
-            "{\"role\":\"user\",\"content\":\"" + EscapeJson(userMessage) + "\"}" +
-            "]," +
-            "\"max_tokens\":8192," +
-            "\"temperature\":0.9}";
+            "\"system_instruction\":\"" + EscapeJson(systemPrompt) + "\"," +
+            "\"input\":\"" + EscapeJson(userMessage) + "\"," +
+            "\"generation_config\":{" +
+            "\"temperature\":0.9" +
+            "}}";
 
             LogManager.Log($"Sending request json:{json}");
 
@@ -276,19 +279,22 @@ namespace LivingStoryteller
 
         private static string ParseContent(string json)
         {
-            // Find the first "content" field in the response
-            int contentIdx = json.IndexOf("\"content\"");
-            if (contentIdx < 0) return null;
+            // Find the model_output step specifically
+            int outputIdx = json.IndexOf("\"content\"");
+            if (outputIdx < 0) return null;
 
-            // Find the colon
-            int colonIdx = json.IndexOf(':', contentIdx + 9);
+            // Find the "text" field that appears after model_output
+            int textIdx = json.IndexOf("\"text\"", outputIdx);
+            if (textIdx < 0) return null;
+
+            // Find the colon after "text"
+            int colonIdx = json.IndexOf(':', textIdx + 6);
             if (colonIdx < 0) return null;
 
             // Find the opening quote of the value
             int openQuote = json.IndexOf('"', colonIdx + 1);
             if (openQuote < 0) return null;
 
-            // Walk character by character
             var sb = new StringBuilder();
             int i = openQuote + 1;
             while (i < json.Length)
@@ -310,10 +316,7 @@ namespace LivingStoryteller
                             if (i + 5 < json.Length)
                             {
                                 string hex = json.Substring(i + 2, 4);
-                                if (int.TryParse(hex,
-                                    System.Globalization
-                                        .NumberStyles.HexNumber,
-                                    null, out int code))
+                                if (int.TryParse(hex, System.Globalization.NumberStyles.HexNumber, null, out int code))
                                 {
                                     sb.Append((char)code);
                                     i += 6;
@@ -332,7 +335,7 @@ namespace LivingStoryteller
                 }
                 else if (c == '"')
                 {
-                    break;
+                    break; // End of string
                 }
                 else
                 {
@@ -342,11 +345,7 @@ namespace LivingStoryteller
             }
 
             string result = sb.ToString().Trim();
-
-            if (result.Length == 0) return null;
-
-            return result;
-        
+            return result.Length == 0 ? null : result;
         }
 
     }
