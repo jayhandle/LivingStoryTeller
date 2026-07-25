@@ -51,6 +51,10 @@ namespace LivingStoryteller
         public async Task<string> GetResponse(string json)
         {
             var endpoint = ModOptions.Settings.Endpoint;
+            if (!endpoint.StartsWith("http://") && !endpoint.StartsWith("https://"))
+            {
+                endpoint = "https://" + endpoint;
+            }
 
             var apiKey = ModOptions.Settings.ApiKey;
             var client = httpClient;
@@ -64,40 +68,61 @@ namespace LivingStoryteller
                 using (var resp = await client.PostAsync(endpoint, content))
                 {
                     string responseBody = await resp.Content.ReadAsStringAsync();
-                    LogManager.Log("Raw API response: " + responseBody);
-                    resp.EnsureSuccessStatusCode();
+                    if (resp.StatusCode == (HttpStatusCode)429)
+                    {
+                        LogManager.Warning("[LivingStoryteller] NovelAI rate limited. Skipping this narration.");
+                        return null;
+                    }
+
+                    if (!resp.IsSuccessStatusCode)
+                    {
+                        string errorPreview = responseBody.Length > 1000
+                            ? responseBody.Substring(0, 1000) + "..."
+                            : responseBody;
+                        LogManager.Error("[LivingStoryteller] NovelAI request failed. Status=" + resp.StatusCode + ", body preview=" + errorPreview);
+                        resp.EnsureSuccessStatusCode();
+                    }
+
                     // Debug logging via queue
                     string preview = responseBody.Length > 500
                         ? responseBody.Substring(0, 500) + "..."
                         : responseBody;
 
+                    LogManager.Log("Raw API response: " + preview);
+
                     return ParseContent(responseBody);
                 }
             }
-            catch (WebException wex)
+            catch (HttpRequestException ex)
             {
-                var httpResp =
-                    wex.Response as HttpWebResponse;
-                if (httpResp != null &&
-                    (int)httpResp.StatusCode == 429)
-                {
-                    LogManager.Warning("[LivingStoryteller] Rate limited. " + "Skipping this narration.");
-                    return null;
-                }
+                LogManager.Error("[LivingStoryteller] NovelAI request failed: " + ex.Message);
                 throw;
             }
         }
 
         public string JSONRequest(string model, string systemPrompt, string userMessage)
         {
+            var input = BuildInputPrompt(systemPrompt, userMessage);
             string json =
-                "{\"model\":\"" + EscapeJson(model) + "\"," +
-                "\"messages\":[" +
-                "{\"role\":\"system\",\"content\":\"" + EscapeJson(systemPrompt) + "\"}," +
-                "{\"role\":\"user\",\"content\":\"" + EscapeJson(userMessage) + "\"}" +
-                "]," +
-                "\"max_tokens\":8192," +
-                "\"temperature\":0.9}";
+                "{" +
+                "\"input\":\"" + EscapeJson(input) + "\"," +
+                "\"model\":\"" + EscapeJson(model) + "\"," +
+                "\"parameters\":{" +
+                "\"use_string\":true," +
+                "\"temperature\":0.9," +
+                "\"max_tokens\":250," +
+                "\"min_length\":120," +
+                "\"top_k\":120," +
+                "\"top_p\":0.9," +
+                "\"tail_free_sampling\":1," +
+                "\"repetition_penalty\":3.1," +
+                "\"repetition_penalty_range\":2048," +
+                "\"repetition_penalty_slope\":0.09," +
+                "\"repetition_penalty_frequency\":0," +
+                "\"repetition_penalty_presence\":0," +
+                "\"logit_bias_exp\":[]" +
+                "}" +
+                "}";
 
             LogManager.Log($"Sending request json:{json}");
 
@@ -118,27 +143,39 @@ namespace LivingStoryteller
 
         private static string ParseContent(string json)
         {
-            // Find the first "content" field in the response
-            int contentIdx = json.IndexOf("\"content\"");
-            int outputIdx = json.IndexOf("\"output\"");
-if (outputIdx >= 0 && contentIdx < 0 )
+            string result = ExtractJsonString(json, "\"output\"");
+            if (string.IsNullOrWhiteSpace(result))
             {
-                contentIdx = outputIdx;
-            }
-            if (contentIdx < 0)
-            { 
-                return null; 
+                result = ExtractJsonString(json, "\"text\"");
             }
 
-            // Find the colon
-            int colonIdx = json.IndexOf(':', contentIdx);
+            if (string.IsNullOrWhiteSpace(result))
+            {
+                result = ExtractJsonString(json, "\"content\"");
+            }
+
+            return string.IsNullOrWhiteSpace(result) ? null : result;
+        }
+
+        private static string BuildInputPrompt(string systemPrompt, string userMessage)
+        {
+            return
+                "System: " + (systemPrompt ?? string.Empty) + "\n\n" +
+                "User: " + (userMessage ?? string.Empty) + "\n\n" +
+                "Assistant:";
+        }
+
+        private static string ExtractJsonString(string json, string fieldName)
+        {
+            int fieldIdx = json.IndexOf(fieldName, StringComparison.Ordinal);
+            if (fieldIdx < 0) return null;
+
+            int colonIdx = json.IndexOf(':', fieldIdx + fieldName.Length);
             if (colonIdx < 0) return null;
 
-            // Find the opening quote of the value
             int openQuote = json.IndexOf('"', colonIdx + 1);
             if (openQuote < 0) return null;
 
-            // Walk character by character
             var sb = new StringBuilder();
             int i = openQuote + 1;
             while (i < json.Length)
@@ -160,10 +197,7 @@ if (outputIdx >= 0 && contentIdx < 0 )
                             if (i + 5 < json.Length)
                             {
                                 string hex = json.Substring(i + 2, 4);
-                                if (int.TryParse(hex,
-                                    System.Globalization
-                                        .NumberStyles.HexNumber,
-                                    null, out int code))
+                                if (int.TryParse(hex, System.Globalization.NumberStyles.HexNumber, null, out int code))
                                 {
                                     sb.Append((char)code);
                                     i += 6;
@@ -192,11 +226,7 @@ if (outputIdx >= 0 && contentIdx < 0 )
             }
 
             string result = sb.ToString().Trim();
-
-            if (result.Length == 0) return null;
-
-            return result;
-
+            return result.Length == 0 ? null : result;
         }
     }
 }
