@@ -3,7 +3,6 @@ using System.Collections;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using Verse;
-using EchoTales;
 
 namespace LivingStoryteller
 {
@@ -11,12 +10,13 @@ namespace LivingStoryteller
     {
         private const string EchoTalesPackageId = "gerik.echotales";
         private const int CheckIntervalTicks = 600;
-
+        private const int tickOffset = 72000; // wait 2 in game hours or 2 minutes
         private static int nextCheckTick;
         private static bool loggedIntegrationDisabled;
         private static bool loggedModInactive;
         private static bool loggedComponentSchema;
         private static bool? _isAvailable;
+        private static object storyMemory;
 
         public static bool IsAvailable
         {
@@ -30,8 +30,15 @@ namespace LivingStoryteller
 
                     if (_isAvailable.Value)
                     {
-                        LogManager.Log(
-                            "EchoTales Detected");
+                        LogManager.Log("EchoTales Detected");
+                        int ticksGame = Find.TickManager.TicksGame;
+                        int currentDay = GenDate.DaysPassed;
+                        LogManager.Log("[EchoTales] Probe start. day=" + currentDay +
+                            ", ticks=" + ticksGame +
+                            ", readEveryNewEntry=" + ModOptions.Settings.EchoTalesReadEveryNewEntry +
+                            ", lastCommentDay=" + LivingStoryTeller.LivingStorytellerTicksComponent.LastEchoTalesCommentDay +
+                            ", lastTaleSignature=" + LivingStoryTeller.LivingStorytellerTicksComponent.LastEchoTalesTaleSignature );
+
                     }
                 }
                 return _isAvailable.Value;
@@ -68,22 +75,19 @@ namespace LivingStoryteller
             int currentDay = GenDate.DaysPassed;
             bool readEveryNewEntry = ModOptions.Settings.EchoTalesReadEveryNewEntry;
 
-            if (!readEveryNewEntry &&
-                currentDay <= LivingStoryTeller.LivingStorytellerTicksComponent.LastEchoTalesCommentDay)
+            if (!readEveryNewEntry)
             {
-                LogManager.Log("[EchoTales] Skip: already commented today or later. currentDay=" + currentDay +
-                    ", lastCommentDay=" + LivingStoryTeller.LivingStorytellerTicksComponent.LastEchoTalesCommentDay);
-                return;
+                if (currentDay <= LivingStoryTeller.LivingStorytellerTicksComponent.LastEchoTalesCommentDay)
+                {
+                    //LogManager.Log("[EchoTales] Skip: already commented today or before. currentDay=" + currentDay +
+                    //    ", lastCommentDay=" + LivingStoryTeller.LivingStorytellerTicksComponent.LastEchoTalesCommentDay);
+                    return;
+                }
             }
-
-            LogManager.Log("[EchoTales] Probe start. day=" + currentDay +
-                ", ticks=" + ticksGame +
-                ", readEveryNewEntry=" + readEveryNewEntry +
-                ", lastCommentDay=" + LivingStoryTeller.LivingStorytellerTicksComponent.LastEchoTalesCommentDay );
-            
+           
             if (!TryGetLatestTale(out var taleText, out var taleDay))
             {
-                LogManager.Log("[EchoTales] Skip: probe could not retrieve a latest tale entry.");
+                //LogManager.Log("[EchoTales] Skip: probe could not retrieve a latest tale entry.");
                 return;
             }
 
@@ -93,25 +97,25 @@ namespace LivingStoryteller
                 return;
             }
 
-            if (taleDay.HasValue && taleDay.Value <= ticksGame)
+            if(taleDay.HasValue && taleDay.Value <= LivingStoryTeller.LivingStorytellerTicksComponent.LastEchoTalesTaleSignature)
             {
-                LogManager.Log("[EchoTales] Skip: latest tale is from a previous day. taleDay=" + taleDay.Value + ", currentDay=" + currentDay);
+                //LogManager.Log("[EchoTales] Skip: latest tale signature matches or is less than last processed signature. taleDay=" + taleDay.Value +
+                //    ", lastTaleSignature=" + LivingStoryTeller.LivingStorytellerTicksComponent.LastEchoTalesTaleSignature);
                 return;
             }
 
-            if (!readEveryNewEntry &&
-                currentDay == LivingStoryTeller.LivingStorytellerTicksComponent.LastEchoTalesCommentDay)
-            {
-                LogManager.Log("[EchoTales] Skip: readEveryNewEntry=false and commentary already generated for current day.");
-                return;
-            }
+            //if (taleDay.HasValue && (taleDay.Value + tickOffset) <= ticksGame)
+            //{
+            //    LogManager.Log("[EchoTales] Skip: latest tale is from a previous day. taleDay=" + taleDay.Value + ", ticksGame=" + ticksGame);
+            //    return;
+            //}
 
             string eventName = "{" +
                 "\"event\":\"EchoTalesDailyEntry\"," +
                 "\"category\":\"EchoTales\"," +
                 "\"day\":\"" + currentDay + "\"," +
                 "\"entry\":\"" + EscapeJson(taleText) + "\"," +
-                "\"prompt\":\"Make a comment about the day's entry.\"" +
+                "\"prompt\":\"Summarize the day's entry and make a comment about it.\"" +
                 "}";
 
             LogManager.Log("[EchoTales] Daily tale accepted. day=" + currentDay +
@@ -121,8 +125,8 @@ namespace LivingStoryteller
             RequestNarration.Request(eventName, "EchoTales");
 
             LivingStoryTeller.LivingStorytellerTicksComponent.LastEchoTalesCommentDay = currentDay;
-
-            LogManager.Log("[EchoTales] State updated. lastCommentDay=" + currentDay);
+            LivingStoryTeller.LivingStorytellerTicksComponent.LastEchoTalesTaleSignature = taleDay.HasValue ? taleDay.Value : -1;
+            LogManager.Log($"[EchoTales] State updated. lastCommentDay:{LivingStoryTeller.LivingStorytellerTicksComponent.LastEchoTalesCommentDay}: lastSig:{LivingStoryTeller.LivingStorytellerTicksComponent.LastEchoTalesTaleSignature}:");
         }
 
         private static bool TryGetLatestTale(out string taleText, out int? taleDay)
@@ -132,36 +136,46 @@ namespace LivingStoryteller
 
             try
             {
-                var echoAssembly = AppDomain.CurrentDomain.GetAssemblies()
-                    .FirstOrDefault(a => string.Equals(a.GetName().Name, "EchoTales", StringComparison.OrdinalIgnoreCase));
-
-                if (echoAssembly == null)
-                {
-                    LogManager.Log("[EchoTales] Probe detail: EchoTales assembly not loaded.");
-                    return false;
-                }
-
-                EchoStoryMemory storyMemory = (EchoStoryMemory)GetEchoStoryMemory(echoAssembly);
                 if (storyMemory == null)
                 {
-                    LogManager.Log("[EchoTales] storyMemory not found.");
+                    var echoAssembly = AppDomain.CurrentDomain.GetAssemblies()
+                        .FirstOrDefault(a => string.Equals(a.GetName().Name, "EchoTales", StringComparison.OrdinalIgnoreCase));
+
+                    if (echoAssembly == null)
+                    {
+                        LogManager.Warning("[EchoTales] Probe detail: EchoTales assembly not loaded.");
+                        _isAvailable = false;
+                        return false;
+                    }
+
+                    storyMemory = GetEchoStoryMemory(echoAssembly);
+                }
+                if (storyMemory == null)
+                {
+                   LogManager.Log("[EchoTales] storyMemory not found.");
+                   _isAvailable = false;
                     return false;
                    // storyMemory = gameComponent;
                 }
-                LogManager.Log("[EchoTales] storyMemory found: " + storyMemory.SavedEntries.Count());
-                var entries = storyMemory.SavedEntries;
-                var entry = entries.Last();
+               // LogManager.Log("[EchoTales] storyMemory found: " + storyMemory.SavedEntries.Count());
+                var entries = GetMemberValue(storyMemory, "SavedEntries", "savedEntries", "Entries", "entries");
+                if (entries == null)
+                {
+                    //LogManager.Log("[EchoTales] Probe detail: no entries found in EchoTales story memory.");
+                    return false;
+                }
+                var entry = GetLastFromEnumerable(entries);
                 
                 if (entry == null)
                 {
-                    LogManager.Log("[EchoTales] Probe detail: no latest entry found in EchoTales component entries collection.");
+                   // LogManager.Log("[EchoTales] Probe detail: no latest entry found in EchoTales component entries collection.");
                     return false;
                 }
 
-                LogManager.Log($"[EchoTales] Probe detail: latest entry found. Tick:{taleDay}:  entryText: " + entry.Text);
+                //LogManager.Log($"[EchoTales] Probe detail: latest entry found. Tick:{entry.GetType()}: entryText: " + ReadEntryText(entry));
 
-                taleDay = entry.Ticks;
-                taleText = entry.Text;
+                taleDay = GetMemberValue(entry, "Ticks", "ticks") is int t ? t : (int?)null;
+                taleText = GetMemberValue(entry, "Text", "text", "Story", "story", "Content", "content") as string;
                 return !string.IsNullOrWhiteSpace(taleText); 
             }
             catch (Exception ex)
@@ -636,17 +650,6 @@ namespace LivingStoryteller
                 .Replace("\n", "\\n")
                 .Replace("\r", "\\r")
                 .Replace("\t", "\\t");
-        }
-
-        private static string ShortSignature(string signature)
-        {
-            if (string.IsNullOrEmpty(signature))
-                return "<empty>";
-
-            if (signature.Length <= 40)
-                return signature;
-
-            return signature.Substring(0, 40) + "...";
         }
     }
 }

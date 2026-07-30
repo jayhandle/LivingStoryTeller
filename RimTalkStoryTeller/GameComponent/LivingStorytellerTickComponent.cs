@@ -13,7 +13,7 @@ namespace LivingStoryTeller
         public static MemoryManager MemoryManager = new MemoryManager();
         public static bool Initialized = false;
         public static int LastEchoTalesCommentDay = -1;
-        public static string LastEchoTalesTaleSignature = string.Empty;
+        public static int LastEchoTalesTaleSignature = -1;
         public LivingStorytellerTicksComponent(Game game) {
             if (Initialized) return; //loads only once
             Initialized = true;
@@ -41,7 +41,7 @@ namespace LivingStoryTeller
             // Save/load memory system
             Scribe_Deep.Look(ref MemoryManager, "LivingStorytellerMemory");
             Scribe_Values.Look(ref LastEchoTalesCommentDay, "LastEchoTalesCommentDay", -1);
-            Scribe_Values.Look(ref LastEchoTalesTaleSignature, "LastEchoTalesTaleSignature", string.Empty);
+            Scribe_Values.Look(ref LastEchoTalesTaleSignature, "LastEchoTalesTaleSignature", -1);
         }
     }
 }
