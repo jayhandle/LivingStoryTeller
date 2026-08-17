@@ -172,7 +172,7 @@ namespace LivingStoryteller
             };
 
             LogManager.Log("Requesting narration for event: " + incidentLabel + " (Category: " + incidentCategory + ") EventKey:" + eventKey);
-
+            if (!ModOptions.Settings.EnableStoryTeller) return;
             lock (eventProcessingLock)
             {
                 if (eventProcessing.Contains(eventKey))

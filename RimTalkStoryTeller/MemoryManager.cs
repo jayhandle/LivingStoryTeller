@@ -24,6 +24,25 @@ namespace LivingStoryteller
             { 
                 LongTerm.Add(mem); 
             }
+
+            TrimToCapacity();
+        }
+
+        // Keeps only the most recent memories so the storyteller doesn't recall the whole game.
+        private void TrimToCapacity()
+        {
+            int capacity = ModOptions.Settings?.MemoryCapacity ?? 20;
+            if (capacity < 1) capacity = 1;
+
+            if (ShortTerm.Count > capacity)
+            {
+                ShortTerm.RemoveRange(0, ShortTerm.Count - capacity);
+            }
+
+            if (LongTerm.Count > capacity)
+            {
+                LongTerm.RemoveRange(0, LongTerm.Count - capacity);
+            }
         }
 
         public void ExposeData()
@@ -54,6 +73,8 @@ namespace LivingStoryteller
             {
                 arc.Tick();
             }
+
+            TrimToCapacity();
         }
     }
 

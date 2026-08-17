@@ -36,6 +36,9 @@ namespace LivingStoryteller
         public bool SkipEventsDuringCooldown = false;
         public bool EnableEchoTalesIntegration = true;
         public bool EchoTalesReadEveryNewEntry = false;
+        public bool EnableSilentRaidsIntegration = true;
+        public int MemoryCapacity = 20;
+        public bool EnableStoryTeller = true;
         public bool DebugLogging = false;
         public bool UseAccent = true;
         public bool UseEmotion = true;
@@ -45,6 +48,7 @@ namespace LivingStoryteller
         public float Confidence = 0f;    // rises with wealth, victories, growth
 
         public string EffectiveTTSApiKey => string.IsNullOrWhiteSpace(TTSApiKey) ? ApiKey : TTSApiKey;
+
 
         public override void ExposeData()
         {
@@ -68,7 +72,10 @@ namespace LivingStoryteller
             Scribe_Values.Look(ref SkipEventsDuringCooldown, "skipEventsDuringCooldown", false);
             Scribe_Values.Look(ref EnableEchoTalesIntegration, "enableEchoTalesIntegration", true);
             Scribe_Values.Look(ref EchoTalesReadEveryNewEntry, "echoTalesReadEveryNewEntry", false);
-            Scribe_Values.Look(ref DebugLogging, "DebugLogging", true);
+            Scribe_Values.Look(ref EnableSilentRaidsIntegration, "enableSilentRaidsIntegration", true);
+            Scribe_Values.Look(ref MemoryCapacity, "memoryCapacity", 20);
+            Scribe_Values.Look(ref DebugLogging, "DebugLogging", false);
+            Scribe_Values.Look(ref EnableStoryTeller, "EnableStoryTeller", true);   
             Scribe_Values.Look(ref UseAccent, "UseAccent", true);
             Scribe_Values.Look(ref UseEmotion, "UseEmotion", true);
             Scribe_Values.Look(ref Stress, "Stress", 0f);

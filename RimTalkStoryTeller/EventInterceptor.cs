@@ -38,12 +38,18 @@ namespace LivingStoryteller
             eventName += $@"""text"": ""{incident.letterText}""";
             eventName += $@"}}";
 
+            bool silent = SilentRaidsIntegration.ShouldSuppressNarration(incident, __instance);
+
             LivingStorytellerTicksComponent.MemoryManager.AddMemory(new MemoryRecord()
             {
                 Type = incident.defName,
-                Description = $"{label} ({incident.category.ToString()})",
+                Description = silent
+                    ? $"{label} ({incident.category.ToString()}) - unannounced, the colony was not warned"
+                    : $"{label} ({incident.category.ToString()})",
                 IsSignificant = true
             });
+
+            if (silent) return;
 
             RequestNarration.Request(eventName, incident.category.ToString());
         }
@@ -69,7 +75,7 @@ namespace LivingStoryteller
     {
         public static void Postfix(bool __result, FiringIncident fi)
         {
-            if (fi.def.defName == "GiveQuest_Random") return; // Too spammy and not interesting for storytelling
+            if (fi== null || fi.def == null || fi.def.defName == "GiveQuest_Random") return; // Too spammy and not interesting for storytelling
             LogManager.Log($"[Patch_Storyteller_FiringIncident] Storyteller | {fi.def.defName} | {__result} .");
 
         }

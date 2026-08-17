@@ -71,7 +71,7 @@ namespace LivingStoryteller
             Listing_Standard listing = new Listing_Standard();
             Widgets.BeginScrollView(inRect, ref optionScrollPos, new Rect(0f, 0f, inRect.width, inRect.height + 800), true);
             listing.Begin(new Rect(0, 0, inRect.width - 25, inRect.height + 800));
-
+            listing.CheckboxLabeled("Enable Storyteller Mod", ref Settings.EnableStoryTeller);
             listing.CheckboxLabeled("Enable Debug Logging", ref Settings.DebugLogging);
             listing.Gap();
 
@@ -172,6 +172,13 @@ namespace LivingStoryteller
                 listing.Gap();
                 listing.CheckboxLabeled("EchoTales: read every new entry (not just once per day)", ref Settings.EchoTalesReadEveryNewEntry);
             }
+
+            listing.Gap();
+            listing.CheckboxLabeled("Silent Raids: stay quiet about raids (remember them only)", ref Settings.EnableSilentRaidsIntegration);
+
+            listing.Gap();
+            listing.Label("Storyteller Memory Capacity: " + Settings.MemoryCapacity + " events");
+            Settings.MemoryCapacity = (int)listing.Slider(Settings.MemoryCapacity, 5f, 100f);
 
             listing.GapLine();
             listing.Gap();
