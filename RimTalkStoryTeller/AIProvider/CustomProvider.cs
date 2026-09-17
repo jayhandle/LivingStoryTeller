@@ -159,6 +159,7 @@ namespace LivingStoryteller
             string mood)
         {
             var settings = ModOptions.Settings;
+            LogManager.Log($"[TTS] Applying request template. Template: {template}, Text: {text}, Persona: {persona}, Voice: {voice}, Emotion: {emotion}, Mood: {mood}");
             return (template ?? string.Empty)
                 .Replace("{text}", EscapeTemplateValue(text))
                 .Replace("{persona}", EscapeTemplateValue(persona))
