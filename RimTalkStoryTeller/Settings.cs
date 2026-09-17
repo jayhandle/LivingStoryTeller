@@ -14,6 +14,20 @@ namespace LivingStoryteller
             custom
         }
 
+        public enum CustomTTSResponseMode
+        {
+            legacy,
+            direct_audio,
+            json_download
+        }
+
+        public enum CustomTTSAudioFormat
+        {
+            pcm16_24khz_mono,
+            wav,
+            mp3
+        }
+
         public List<string> Storytellers = new List<string>();
         public string ApiKey = "";
         public string TTSApiKey = "";
@@ -26,6 +40,15 @@ namespace LivingStoryteller
         public bool TTSEnabled = true;
         public string TTSModelName = "gemini-2.5-flash-tts";
         public string TTSEndpoint = "https://generativelanguage.googleapis.com/v1beta/interactions";
+        public CustomTTSResponseMode CustomTTSMode = CustomTTSResponseMode.legacy;
+        public CustomTTSAudioFormat CustomTTSAudioType = CustomTTSAudioFormat.pcm16_24khz_mono;
+        public string CustomTTSRequestTemplate = "{\"model\":\"{model}\",\"voice\":\"{voice}\",\"input\":\"{text}\"}";
+        public string CustomTTSLanguage = "en";
+        public string CustomTTSContentType = "application/json";
+        public string CustomTTSHeaderName = "Authorization";
+        public string CustomTTSHeaderPrefix = "Bearer ";
+        public string CustomTTSDownloadPathField = "download_path";
+        public string CustomTTSDownloadUrlTemplate = "";
         public string PersonaText = "The player is running a colony and you are the storyteller controlling events. " +
             "An event just occurred. Respond in character in 2-4 sentences. Address the player directly. " +
             "Do not use quotation marks around your response. Keep the narration concise, ideally under 100 words. " +
@@ -61,6 +84,15 @@ namespace LivingStoryteller
             Scribe_Values.Look(ref TTSEnabled, "TTSEnabled", true);
             Scribe_Values.Look(ref TTSModelName, "ttsModelName", "gemini-2.5-flash-preview-tts");
             Scribe_Values.Look(ref TTSEndpoint, "ttsEndpoint", "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=");
+            Scribe_Values.Look(ref CustomTTSMode, "customTTSMode", CustomTTSResponseMode.legacy);
+            Scribe_Values.Look(ref CustomTTSAudioType, "customTTSAudioType", CustomTTSAudioFormat.pcm16_24khz_mono);
+            Scribe_Values.Look(ref CustomTTSRequestTemplate, "customTTSRequestTemplate", "{\"model\":\"{model}\",\"voice\":\"{voice}\",\"input\":\"{text}\"}");
+            Scribe_Values.Look(ref CustomTTSLanguage, "customTTSLanguage", "en");
+            Scribe_Values.Look(ref CustomTTSContentType, "customTTSContentType", "application/json");
+            Scribe_Values.Look(ref CustomTTSHeaderName, "customTTSHeaderName", "Authorization");
+            Scribe_Values.Look(ref CustomTTSHeaderPrefix, "customTTSHeaderPrefix", "Bearer ");
+            Scribe_Values.Look(ref CustomTTSDownloadPathField, "customTTSDownloadPathField", "download_path");
+            Scribe_Values.Look(ref CustomTTSDownloadUrlTemplate, "customTTSDownloadUrlTemplate", "");
             Scribe_Values.Look(ref PersonaText, "personaText", "The player is running a colony and you are the storyteller controlling events. " +
             "An event just occurred. Respond in character in 2-4 sentences. Be dramatic. Address the player directly. " +
             "Do not use quotation marks around your response. Keep the narration concise, ideally under 100 words. " +

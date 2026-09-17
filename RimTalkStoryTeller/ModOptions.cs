@@ -69,8 +69,8 @@ namespace LivingStoryteller
         private void GeneralTab(Rect inRect)
         {
             Listing_Standard listing = new Listing_Standard();
-            Widgets.BeginScrollView(inRect, ref optionScrollPos, new Rect(0f, 0f, inRect.width, inRect.height + 800), true);
-            listing.Begin(new Rect(0, 0, inRect.width - 25, inRect.height + 800));
+            Widgets.BeginScrollView(inRect, ref optionScrollPos, new Rect(0f, 0f, inRect.width, inRect.height + 1400), true);
+            listing.Begin(new Rect(0, 0, inRect.width - 25, inRect.height + 1400));
             listing.CheckboxLabeled("Enable Storyteller Mod", ref Settings.EnableStoryTeller);
             listing.CheckboxLabeled("Enable Debug Logging", ref Settings.DebugLogging);
             listing.Gap();
@@ -143,6 +143,10 @@ namespace LivingStoryteller
                 listing.Label("TTS API Key:");
                 Settings.TTSApiKey = listing.TextEntry(string.IsNullOrWhiteSpace(Settings.TTSApiKey) ? Settings.ApiKey : Settings.TTSApiKey);
 
+                if (Settings.TTSProviderName == StorytellerSettings.AIProvider.custom)
+                {
+                    DrawCustomTTSSettings(listing);
+                }
             }
 
             listing.GapLine();
@@ -206,6 +210,103 @@ namespace LivingStoryteller
             //}
             listing.End();
             Widgets.EndScrollView();
+        }
+
+        private static void DrawCustomTTSSettings(Listing_Standard listing)
+        {
+            listing.GapLine();
+            listing.Label("Custom TTS Response Mode:");
+            if (listing.ButtonText(CustomTTSModeLabel(Settings.CustomTTSMode)))
+            {
+                var options = new List<FloatMenuOption>();
+                foreach (StorytellerSettings.CustomTTSResponseMode mode in Enum.GetValues(typeof(StorytellerSettings.CustomTTSResponseMode)))
+                {
+                    var selectedMode = mode;
+                    options.Add(new FloatMenuOption(CustomTTSModeLabel(mode), () => Settings.CustomTTSMode = selectedMode));
+                }
+                Find.WindowStack.Add(new FloatMenu(options));
+            }
+
+            if (listing.ButtonText("Load Local JSON Download Preset"))
+            {
+                Settings.TTSEndpoint = "http://10.0.0.193:8000/synthesize";
+                Settings.CustomTTSMode = StorytellerSettings.CustomTTSResponseMode.json_download;
+                Settings.CustomTTSAudioType = StorytellerSettings.CustomTTSAudioFormat.wav;
+                Settings.CustomTTSRequestTemplate = "{\"speaker_name\":\"{voice}\",\"language\":\"{language}\",\"text\":\"{text}\"}";
+                Settings.CustomTTSLanguage = "en";
+                Settings.CustomTTSContentType = "application/json";
+                Settings.CustomTTSHeaderName = "X-API-Key";
+                Settings.CustomTTSHeaderPrefix = "";
+                Settings.CustomTTSDownloadPathField = "download_path";
+                Settings.CustomTTSDownloadUrlTemplate = "";
+            }
+
+            if (Settings.CustomTTSMode == StorytellerSettings.CustomTTSResponseMode.legacy)
+            {
+                return;
+            }
+
+            listing.Label("Audio Format:");
+            if (listing.ButtonText(CustomTTSAudioFormatLabel(Settings.CustomTTSAudioType)))
+            {
+                var options = new List<FloatMenuOption>();
+                foreach (StorytellerSettings.CustomTTSAudioFormat format in Enum.GetValues(typeof(StorytellerSettings.CustomTTSAudioFormat)))
+                {
+                    var selectedFormat = format;
+                    options.Add(new FloatMenuOption(CustomTTSAudioFormatLabel(format), () => Settings.CustomTTSAudioType = selectedFormat));
+                }
+                Find.WindowStack.Add(new FloatMenu(options));
+            }
+
+            listing.Label("Request Body Template:");
+            Settings.CustomTTSRequestTemplate = listing.TextEntry(Settings.CustomTTSRequestTemplate, lineCount: 4);
+
+            listing.Label("Language ({language}):");
+            Settings.CustomTTSLanguage = listing.TextEntry(Settings.CustomTTSLanguage);
+
+            listing.Label("Content Type:");
+            Settings.CustomTTSContentType = listing.TextEntry(Settings.CustomTTSContentType);
+
+            listing.Label("API Key Header Name:");
+            Settings.CustomTTSHeaderName = listing.TextEntry(Settings.CustomTTSHeaderName);
+
+            listing.Label("API Key Header Prefix:");
+            Settings.CustomTTSHeaderPrefix = listing.TextEntry(Settings.CustomTTSHeaderPrefix);
+
+            if (Settings.CustomTTSMode == StorytellerSettings.CustomTTSResponseMode.json_download)
+            {
+                listing.Label("Download Path JSON Field:");
+                Settings.CustomTTSDownloadPathField = listing.TextEntry(Settings.CustomTTSDownloadPathField);
+
+                listing.Label("Download URL Template (optional):");
+                Settings.CustomTTSDownloadUrlTemplate = listing.TextEntry(Settings.CustomTTSDownloadUrlTemplate);
+            }
+        }
+
+        private static string CustomTTSModeLabel(StorytellerSettings.CustomTTSResponseMode mode)
+        {
+            switch (mode)
+            {
+                case StorytellerSettings.CustomTTSResponseMode.direct_audio:
+                    return "Direct Audio Response";
+                case StorytellerSettings.CustomTTSResponseMode.json_download:
+                    return "JSON Then Download";
+                default:
+                    return "Legacy (Unchanged)";
+            }
+        }
+
+        private static string CustomTTSAudioFormatLabel(StorytellerSettings.CustomTTSAudioFormat format)
+        {
+            switch (format)
+            {
+                case StorytellerSettings.CustomTTSAudioFormat.wav:
+                    return "WAV";
+                case StorytellerSettings.CustomTTSAudioFormat.mp3:
+                    return "MP3";
+                default:
+                    return "PCM16, 24 kHz, Mono";
+            }
         }
 
         private void PersonaTab(Rect inRect)

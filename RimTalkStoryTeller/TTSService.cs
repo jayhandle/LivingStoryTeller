@@ -111,8 +111,12 @@ namespace LivingStoryteller
             LogManager.Log("[TTS] RequestSpeech called. Text length = " + text.Length + ", PersonaDefName = " + PersonaDefName);
             var settings = ModOptions.Settings;
             var ttsApiKey = settings.EffectiveTTSApiKey;
+            bool customEndpointNeedsKey =
+                settings.TTSProviderName != StorytellerSettings.AIProvider.custom ||
+                settings.CustomTTSMode == StorytellerSettings.CustomTTSResponseMode.legacy ||
+                !string.IsNullOrWhiteSpace(settings.CustomTTSHeaderName);
 
-            if (ttsApiKey.NullOrEmpty())
+            if (customEndpointNeedsKey && ttsApiKey.NullOrEmpty())
             {
                 LogManager.Warning("[LivingStoryteller][TTS] No TTS API key available. Set TTS API Key or API Key in mod settings.");
                 return;
@@ -149,11 +153,11 @@ namespace LivingStoryteller
         {
             var settings = ModOptions.Settings;
             string url = settings.TTSEndpoint;
-            string voice = ResolveVoice(PersonaDefName, ModOptions.Settings.ProviderName.ToString());
+            string voice = ResolveVoice(PersonaDefName, settings.TTSProviderName.ToString());
             if (voice.NullOrEmpty())
             {
-                LogManager.Warning("[TTS] No voice mapping found for PersonaDefName: " + PersonaDefName + " with provider: " + ModOptions.Settings.ProviderName);
-                voice = ResolveVoice("FallbackPersona", ModOptions.Settings.ProviderName.ToString()); // default fallback
+                LogManager.Warning("[TTS] No voice mapping found for PersonaDefName: " + PersonaDefName + " with provider: " + settings.TTSProviderName);
+                voice = ResolveVoice("FallbackPersona", settings.TTSProviderName.ToString()); // default fallback
             }
 
             LogManager.Log("[TTS] Resolved voice for " + PersonaDefName + " is " + voice);
