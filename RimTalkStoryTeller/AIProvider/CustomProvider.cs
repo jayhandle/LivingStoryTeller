@@ -5,7 +5,6 @@ using System.Net;
 using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
-using NAudio.Wave;
 
 namespace LivingStoryteller
 {
@@ -131,22 +130,136 @@ namespace LivingStoryteller
 
         private static byte[] ConvertWavToPlaybackPcm(byte[] wavData)
         {
-            using (var input = new System.IO.MemoryStream(wavData))
-            using (var reader = new WaveFileReader(input))
+            if (wavData == null || wavData.Length < 12 ||
+                Encoding.ASCII.GetString(wavData, 0, 4) != "RIFF" ||
+                Encoding.ASCII.GetString(wavData, 8, 4) != "WAVE")
             {
-                var targetFormat = new WaveFormat(24000, 16, 1);
-                using (var resampler = new MediaFoundationResampler(reader, targetFormat))
-                using (var output = new System.IO.MemoryStream())
+                throw new InvalidOperationException("The custom TTS response is not a valid RIFF WAV file.");
+            }
+
+            ushort format = 0;
+            ushort channels = 0;
+            int sampleRate = 0;
+            ushort bitsPerSample = 0;
+            int dataOffset = -1;
+            int dataLength = 0;
+
+            int chunkOffset = 12;
+            while (chunkOffset + 8 <= wavData.Length)
+            {
+                string chunkId = Encoding.ASCII.GetString(wavData, chunkOffset, 4);
+                int chunkLength = BitConverter.ToInt32(wavData, chunkOffset + 4);
+                int chunkDataOffset = chunkOffset + 8;
+                if (chunkLength < 0 || chunkDataOffset + (long)chunkLength > wavData.Length)
                 {
-                    resampler.ResamplerQuality = 60;
-                    var buffer = new byte[4096];
-                    int bytesRead;
-                    while ((bytesRead = resampler.Read(buffer, 0, buffer.Length)) > 0)
-                    {
-                        output.Write(buffer, 0, bytesRead);
-                    }
-                    return output.ToArray();
+                    throw new InvalidOperationException("The custom TTS WAV contains an invalid chunk length.");
                 }
+
+                if (chunkId == "fmt " && chunkLength >= 16)
+                {
+                    format = BitConverter.ToUInt16(wavData, chunkDataOffset);
+                    channels = BitConverter.ToUInt16(wavData, chunkDataOffset + 2);
+                    sampleRate = BitConverter.ToInt32(wavData, chunkDataOffset + 4);
+                    bitsPerSample = BitConverter.ToUInt16(wavData, chunkDataOffset + 14);
+
+                    if (format == 0xFFFE && chunkLength >= 40)
+                    {
+                        format = BitConverter.ToUInt16(wavData, chunkDataOffset + 24);
+                    }
+                }
+                else if (chunkId == "data")
+                {
+                    dataOffset = chunkDataOffset;
+                    dataLength = chunkLength;
+                }
+
+                chunkOffset = chunkDataOffset + chunkLength + (chunkLength & 1);
+            }
+
+            if ((format != 1 && format != 3) || channels == 0 || sampleRate <= 0 ||
+                bitsPerSample == 0 || dataOffset < 0 || dataLength == 0)
+            {
+                throw new InvalidOperationException(
+                    $"Unsupported custom TTS WAV format: format={format}, channels={channels}, " +
+                    $"sampleRate={sampleRate}, bitsPerSample={bitsPerSample}.");
+            }
+
+            int bytesPerSample = (bitsPerSample + 7) / 8;
+            int frameSize = bytesPerSample * channels;
+            if (frameSize <= 0 || dataLength < frameSize)
+            {
+                throw new InvalidOperationException("The custom TTS WAV does not contain complete audio frames.");
+            }
+
+            int sourceFrameCount = dataLength / frameSize;
+            var monoSamples = new float[sourceFrameCount];
+            for (int frame = 0; frame < sourceFrameCount; frame++)
+            {
+                float sampleSum = 0f;
+                int frameOffset = dataOffset + frame * frameSize;
+                for (int channel = 0; channel < channels; channel++)
+                {
+                    sampleSum += ReadWavSample(
+                        wavData,
+                        frameOffset + channel * bytesPerSample,
+                        format,
+                        bitsPerSample);
+                }
+                monoSamples[frame] = sampleSum / channels;
+            }
+
+            const int targetSampleRate = 24000;
+            int targetFrameCount = Math.Max(1, (int)Math.Round(
+                sourceFrameCount * (double)targetSampleRate / sampleRate));
+            var pcmData = new byte[targetFrameCount * 2];
+            for (int frame = 0; frame < targetFrameCount; frame++)
+            {
+                double sourcePosition = frame * (double)sampleRate / targetSampleRate;
+                int firstFrame = Math.Min((int)sourcePosition, sourceFrameCount - 1);
+                int secondFrame = Math.Min(firstFrame + 1, sourceFrameCount - 1);
+                float fraction = (float)(sourcePosition - firstFrame);
+                float sample = monoSamples[firstFrame] +
+                    (monoSamples[secondFrame] - monoSamples[firstFrame]) * fraction;
+                short pcmSample = (short)Math.Round(
+                    Math.Max(-1f, Math.Min(1f, sample)) * 32767f);
+                pcmData[frame * 2] = (byte)(pcmSample & 0xff);
+                pcmData[frame * 2 + 1] = (byte)((pcmSample >> 8) & 0xff);
+            }
+
+            LogManager.Log(
+                $"[TTS] Converted WAV: {sampleRate} Hz, {channels} channel(s), " +
+                $"{bitsPerSample}-bit to {targetSampleRate} Hz mono PCM16.");
+            return pcmData;
+        }
+
+        private static float ReadWavSample(byte[] data, int offset, ushort format, ushort bitsPerSample)
+        {
+            if (format == 3 && bitsPerSample == 32)
+            {
+                return BitConverter.ToSingle(data, offset);
+            }
+
+            if (format != 1)
+            {
+                throw new InvalidOperationException(
+                    $"Unsupported custom TTS WAV encoding: format={format}, bitsPerSample={bitsPerSample}.");
+            }
+
+            switch (bitsPerSample)
+            {
+                case 8:
+                    return (data[offset] - 128) / 128f;
+                case 16:
+                    return BitConverter.ToInt16(data, offset) / 32768f;
+                case 24:
+                    int sample24 = data[offset] | (data[offset + 1] << 8) | (data[offset + 2] << 16);
+                    if ((sample24 & 0x800000) != 0) sample24 |= unchecked((int)0xff000000);
+                    return sample24 / 8388608f;
+                case 32:
+                    return BitConverter.ToInt32(data, offset) / 2147483648f;
+                default:
+                    throw new InvalidOperationException(
+                        $"Unsupported custom TTS PCM bit depth: {bitsPerSample}.");
             }
         }
 
