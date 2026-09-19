@@ -152,10 +152,10 @@
 			</li>
 		</voiceProviders>
 		<emotionModifiers>
-			<neutral>Speak normally.</neutral>
-			<tense>Speak with urgency and seriousness.</tense>
-			<chaotic>Speak with excitement and unpredictability.</chaotic>
-			<somber>Speak softly and with sympathy.</somber>
+			<neutral>default</neutral>
+			<tense>tense</tense>
+			<chaotic>chaotic</chaotic>
+			<somber>somber</somber>
 		</emotionModifiers>
 		<moodModifiers>
 			<neutral>maintain a balanced, informative tone.</neutral>
