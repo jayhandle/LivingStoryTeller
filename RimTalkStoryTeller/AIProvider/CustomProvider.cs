@@ -12,6 +12,12 @@ namespace LivingStoryteller
     {
         private static readonly HttpClient httpClient = new HttpClient();
 
+        // Separate client: TTS synthesis can far exceed the 30s timeout used for chat completions.
+        private static readonly HttpClient ttsHttpClient = new HttpClient
+        {
+            Timeout = TimeSpan.FromMinutes(5)
+        };
+
         public string JSONTTSRequest(string text, string personaDef, string voiceType, string emotion, string mood)
         {
             var settings = ModOptions.Settings;
@@ -40,12 +46,10 @@ namespace LivingStoryteller
                 return await GetConfiguredTTSResponse(json);
             }
 
-            var content = new StringContent(json, Encoding.UTF8, "application/json");
             var url = ModOptions.Settings.TTSEndpoint;
-            httpClient.DefaultRequestHeaders.Clear();
-            httpClient.DefaultRequestHeaders.Add("Authorization", "Bearer " + ModOptions.Settings.EffectiveTTSApiKey);
             LogManager.Log($"[TTS] Making request to custom TTS endpoint: {url}: with content: {json}");
-            using (var resp = await httpClient.PostAsync(url, content))
+            using (var legacyRequest = new HttpRequestMessage(HttpMethod.Post, url))
+            using (var resp = await SendLegacyTTSRequest(legacyRequest, json))
             {
                 resp.EnsureSuccessStatusCode();
                 string responseBody = await resp.Content.ReadAsStringAsync();
@@ -53,6 +57,13 @@ namespace LivingStoryteller
                 var bArry = Encoding.UTF8.GetBytes(responseBody); //needs to be tested with actual TTS response, may need to be base64 decoded or something else depending on the API
                 return new TTSResponseData(bArry);
             }
+        }
+
+        private static Task<HttpResponseMessage> SendLegacyTTSRequest(HttpRequestMessage request, string json)
+        {
+            request.Headers.TryAddWithoutValidation("Authorization", "Bearer " + ModOptions.Settings.EffectiveTTSApiKey);
+            request.Content = new StringContent(json, Encoding.UTF8, "application/json");
+            return ttsHttpClient.SendAsync(request);
         }
 
         private static async Task<TTSResponseData> GetConfiguredTTSResponse(string requestBody)
@@ -71,7 +82,7 @@ namespace LivingStoryteller
                         : settings.CustomTTSContentType);
                 LogManager.Log($"[TTS] Making configured custom TTS request to: {settings.TTSEndpoint}");
 
-                using (var response = await httpClient.SendAsync(request))
+                using (var response = await ttsHttpClient.SendAsync(request))
                 {
                     if (settings.CustomTTSMode == StorytellerSettings.CustomTTSResponseMode.direct_audio)
                     {
@@ -89,7 +100,7 @@ namespace LivingStoryteller
                         using (var downloadRequest = new HttpRequestMessage(HttpMethod.Get, downloadUrl))
                         {
                             AddAuthentication(downloadRequest);
-                            using (var downloadResponse = await httpClient.SendAsync(downloadRequest))
+                            using (var downloadResponse = await ttsHttpClient.SendAsync(downloadRequest))
                             {
                                 audioData = await downloadResponse.Content.ReadAsByteArrayAsync();
                                 downloadResponse.EnsureSuccessStatusCode();
