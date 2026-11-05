@@ -81,9 +81,12 @@ namespace LivingStoryteller
             {
                 if (!hasPending) return;
                 LogManager.Log("Pending narration found.");
-                // If RPG Dialog is active, wait for any existing
-                // event dialog to close before showing ours
-                if (RPGDialogBridge.IsAvailable)
+                bool useNodeTreeDialog =
+                    StylishDialogsBridge.IsAvailable ||
+                    RPGDialogBridge.IsAvailable;
+
+                // Wait for any existing event dialog to close before showing ours.
+                if (useNodeTreeDialog)
                 {
                     var existingDialog = Find.WindowStack?
                         .WindowOfType<Dialog_NodeTree>();
@@ -112,7 +115,7 @@ namespace LivingStoryteller
                     TTSService.ProcessPendingAudio();
                 }
 
-                if (RPGDialogBridge.IsAvailable)
+                if (useNodeTreeDialog)
                 {
                     RPGDialogBridge.ShowNarration(name, text);
                 }
